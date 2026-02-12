@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Layout } from './components/Layout';
 import { Court } from './components/Court';
@@ -11,7 +12,7 @@ import { StandingsTable } from './components/StandingsTable';
 import { TopPlayers } from './components/TopPlayers'; 
 import { ProfileEditor } from './components/ProfileEditor';
 import { 
-  Tournament, Team, MatchFixture, LiveMatchState, 
+  Tournament, Team, LiveMatchState, 
   Player, PlayerRole, MatchSet, RequestItem, User, MatchConfig
 } from './types';
 import { generateSmartFixture, generateBasicFixture } from './services/geminiService';
@@ -230,12 +231,6 @@ export const App: React.FC = () => {
       if (!confirm("¿Estás seguro de eliminar este equipo?")) return;
       const updated = registeredTeams.filter(t => t.id !== teamId);
       updateTeams(updated);
-  };
-
-  const handleUpdateFixtureDate = (fixId: string, newDate: string) => {
-      if(!activeTournament) return;
-      const updatedFixtures = activeTournament.fixtures?.map(f => f.id === fixId ? {...f, date: newDate} : f);
-      updateActiveTournament({ fixtures: updatedFixtures });
   };
 
   const handleSystemReset = async () => {
@@ -1107,7 +1102,7 @@ export const App: React.FC = () => {
                              <button onClick={() => setCurrentView('dashboard')} className="text-slate-400 hover:text-white font-bold text-xs uppercase tracking-widest">← Panel</button>
                              <div className="h-6 w-px bg-white/10"></div>
                              <span className="text-white font-black uppercase italic tracking-tighter text-lg">{activeTournament.name}</span>
-                             <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-widest ${liveMatch.status === 'live' || liveMatch.status === 'playing' ? 'bg-red-600 text-white animate-pulse' : 'bg-slate-700 text-slate-300'}`}>
+                             <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-widest ${liveMatch.status === 'playing' ? 'bg-red-600 text-white animate-pulse' : 'bg-slate-700 text-slate-300'}`}>
                                  {liveMatch.status === 'warmup' ? 'Calentamiento' : liveMatch.status === 'finished_set' ? 'Set Finalizado' : liveMatch.status === 'finished' ? 'Partido Finalizado' : 'En Vivo'}
                              </span>
                          </div>
