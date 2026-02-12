@@ -888,8 +888,29 @@ export const App: React.FC = () => {
           />
       );
   }
+
+  // --- NEW: Render TV Overlay directly (Full Screen, No Layout) if in TV Mode ---
+  if (tvMode && liveMatch && activeTournament) {
+      return (
+          <TVOverlay 
+            match={liveMatch}
+            teamA={activeTournament.teams.find(t => t.id === activeTournament?.fixtures?.find(f => f.id === liveMatch.matchId)?.teamAId)!}
+            teamB={activeTournament.teams.find(t => t.id === activeTournament?.fixtures?.find(f => f.id === liveMatch.matchId)?.teamBId)!}
+            tournament={activeTournament}
+            currentUser={currentUser}
+            onExit={() => setTvMode(false)}
+            onLogout={currentUser.role === 'VIEWER' ? () => { setCurrentUser(null); setLiveMatch(null); setCurrentView('home'); } : undefined}
+            onBack={currentUser.role === 'VIEWER' ? () => { setCurrentView('dashboard'); setTvMode(false); } : undefined}
+            onNextSet={handleStartNextSet}
+            nextSetCountdown={nextSetCountdown}
+            showStatsOverlay={showStatsOnTV}
+            showScoreboard={showScoreboardOnTV}
+            isCloudConnected={isCloudConnected}
+          />
+      );
+  }
   
-  // Render Main App
+  // Render Main App (Standard Layout)
   return (
     <Layout 
       currentUser={currentUser} 
@@ -1076,26 +1097,9 @@ export const App: React.FC = () => {
           </div>
       )}
 
-      {/* MATCH VIEW */}
+      {/* MATCH VIEW - CONTROL PANEL */}
       {currentView === 'match' && liveMatch && activeTournament && (
           <div className="relative min-h-[85vh]">
-              {tvMode ? (
-                  <TVOverlay 
-                    match={liveMatch}
-                    teamA={activeTournament.teams.find(t => t.id === activeTournament?.fixtures?.find(f => f.id === liveMatch.matchId)?.teamAId)!}
-                    teamB={activeTournament.teams.find(t => t.id === activeTournament?.fixtures?.find(f => f.id === liveMatch.matchId)?.teamBId)!}
-                    tournament={activeTournament}
-                    currentUser={currentUser}
-                    onExit={() => setTvMode(false)}
-                    onLogout={currentUser.role === 'VIEWER' ? () => { setCurrentUser(null); setLiveMatch(null); setCurrentView('home'); } : undefined}
-                    onBack={currentUser.role === 'VIEWER' ? () => { setCurrentView('dashboard'); setTvMode(false); } : undefined}
-                    onNextSet={handleStartNextSet}
-                    nextSetCountdown={nextSetCountdown}
-                    showStatsOverlay={showStatsOnTV}
-                    showScoreboard={showScoreboardOnTV}
-                    isCloudConnected={isCloudConnected}
-                  />
-              ) : (
                 <div className="space-y-4 pb-20">
                      {/* Control Bar */}
                      <div className="flex justify-between items-center bg-black/40 p-4 border-b border-white/10 rounded-t-xl backdrop-blur-md sticky top-16 z-30">
@@ -1221,7 +1225,6 @@ export const App: React.FC = () => {
                         </div>
                      </div>
                 </div>
-              )}
           </div>
       )}
       
