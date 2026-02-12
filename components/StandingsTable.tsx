@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Tournament, Team } from '../types';
+import { Tournament } from '../types';
 
 interface StandingsTableProps {
   tournament: Tournament;

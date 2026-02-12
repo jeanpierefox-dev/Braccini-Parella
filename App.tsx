@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Layout } from './components/Layout';
 import { Court } from './components/Court';
@@ -6,14 +5,14 @@ import { ScoreControl } from './components/ScoreControl';
 import { Login } from './components/Login';
 import { TVOverlay } from './components/TVOverlay';
 import { UserManagement } from './components/UserManagement';
-import { ProfileEditor } from './components/ProfileEditor';
 import { SetStatsModal } from './components/SetStatsModal';
 import { CloudConfig } from './components/CloudConfig';
 import { StandingsTable } from './components/StandingsTable'; 
 import { TopPlayers } from './components/TopPlayers'; 
+import { ProfileEditor } from './components/ProfileEditor';
 import { 
   Tournament, Team, MatchFixture, LiveMatchState, 
-  Player, PlayerRole, MatchSet, RequestItem, User, PointLog, MatchConfig
+  Player, PlayerRole, MatchSet, RequestItem, User, MatchConfig
 } from './types';
 import { generateSmartFixture, generateBasicFixture } from './services/geminiService';
 import { initCloud, syncData, pushData, loadConfig, checkForSyncLink, resetCloudData } from './services/cloud';
@@ -66,9 +65,6 @@ export const App: React.FC = () => {
   const [showScoreboardOnTV, setShowScoreboardOnTV] = useState(true); 
   const [editingPlayer, setEditingPlayer] = useState<Player | null>(null);
   const [loading, setLoading] = useState(false);
-  const [editingTourneyName, setEditingTourneyName] = useState(false);
-  const [editingTeam, setEditingTeam] = useState<Team | null>(null);
-  const [sharingFixture, setSharingFixture] = useState<MatchFixture | null>(null); 
   const [viewingSetStats, setViewingSetStats] = useState<{setNum: number, data: MatchSet} | null>(null);
   
   // Match Config Modal
@@ -266,21 +262,6 @@ export const App: React.FC = () => {
   const handleAddUser = (user: User) => updateUsers([...users, user]);
   const handleDeleteUser = (userId: string) => updateUsers(users.filter(u => u.id !== userId));
   const handleUpdateUser = (updatedUser: User) => { updateUsers(users.map(u => u.id === updatedUser.id ? updatedUser : u)); };
-
-  const handleUpdatePlayerInTeam = (updatedPlayer: Player) => {
-      const updatedTeams = registeredTeams.map(t => ({
-          ...t,
-          players: t.players?.map(p => p.id === updatedPlayer.id ? updatedPlayer : p)
-      }));
-      updateTeams(updatedTeams);
-      setEditingPlayer(null);
-  };
-  
-  const handleUpdateTeam = (updatedTeam: Team) => {
-      const updatedTeams = registeredTeams.map(t => t.id === updatedTeam.id ? updatedTeam : t);
-      updateTeams(updatedTeams);
-      setEditingTeam(null);
-  }
 
   const handleCreateTournament = async () => {
     if (!currentUser) return;
@@ -801,962 +782,742 @@ export const App: React.FC = () => {
     updateLiveMatch(prev => prev ? { ...prev, requests: [...prev.requests, newReq] } : null);
   };
 
-  const initiateSubRequest = (teamId: string) => { setSubPlayerInNum(''); setSubPlayerOutNum(''); setShowSubModal({ teamId }); };
-  
-  const confirmSub = () => {
-    if (!liveMatch || !showSubModal || !subPlayerOutNum || !subPlayerInNum || !activeTournament) return;
-    const team = activeTournament.teams?.find(t => t.id === showSubModal.teamId);
-    if (!team) return;
-    const pOut = team.players.find(p => p.number === parseInt(subPlayerOutNum));
-    const pIn = team.players.find(p => p.number === parseInt(subPlayerInNum));
-    if (!pOut || !pIn) { alert("Jugadores no encontrados."); return; }
-    
-    if (currentUser?.role === 'ADMIN') { applySubstitution(showSubModal.teamId, pOut.id, pIn.id); setShowSubModal(null); return; }
-    
-    const newReq: RequestItem = { id: Date.now().toString(), teamId: showSubModal.teamId, type: 'substitution', status: 'pending', subDetails: { playerOutId: pOut.id, playerInId: pIn.id } };
-    updateLiveMatch(prev => prev ? { ...prev, requests: [...prev.requests, newReq] } : null);
-    setShowSubModal(null);
+  const initiateSubRequest = (teamId: string) => {
+      setSubPlayerInNum('');
+      setSubPlayerOutNum('');
+      setShowSubModal({ teamId });
   };
 
-  const applySubstitution = (teamId: string, pOutId: string, pInId: string) => {
+  const handleConfirmSub = () => {
+      if (!liveMatch || !showSubModal || !activeTournament) return;
+      const { teamId } = showSubModal;
+      const fixture = activeTournament.fixtures?.find(f => f.id === liveMatch.matchId);
+      const isTeamA = teamId === fixture?.teamAId;
+
+      const outNum = parseInt(subPlayerOutNum);
+      const inNum = parseInt(subPlayerInNum);
+
+      if (isNaN(outNum) || isNaN(inNum)) return;
+
       updateLiveMatch(prev => {
           if (!prev) return null;
-          const fixture = activeTournament?.fixtures?.find(f => f.id === prev.matchId);
-          const isTeamA = teamId === fixture?.teamAId;
           
-          let rotation = isTeamA ? [...prev.rotationA] : [...prev.rotationB];
-          let bench = isTeamA ? [...prev.benchA] : [...prev.benchB];
-          
-          const outIndex = rotation.findIndex(p => p.id === pOutId);
-          const inIndex = bench.findIndex(p => p.id === pInId);
-          
-          const fullTeam = activeTournament?.teams?.find(t => t.id === teamId);
-          const playerIn = inIndex !== -1 ? bench[inIndex] : fullTeam?.players.find(p => p.id === pInId);
-          const playerOut = rotation[outIndex];
+          const currentRotation = isTeamA ? prev.rotationA : prev.rotationB;
+          const currentBench = isTeamA ? prev.benchA : prev.benchB;
 
-          if (outIndex === -1 || !playerIn) return prev; 
-          
-          rotation[outIndex] = playerIn;
-          
-          if (inIndex !== -1) {
-              bench[inIndex] = playerOut; 
-          } else {
-              bench.push(playerOut);
+          const playerOutIndex = currentRotation.findIndex(p => p.number === outNum);
+          const playerInIndex = currentBench.findIndex(p => p.number === inNum);
+
+          if (playerOutIndex === -1 || playerInIndex === -1) {
+              alert("Jugadores no encontrados en rotación/banca.");
+              return prev;
           }
 
-          return { 
-              ...prev, 
-              rotationA: isTeamA ? rotation : prev.rotationA, 
-              rotationB: !isTeamA ? rotation : prev.rotationB, 
-              benchA: isTeamA ? bench : prev.benchA, 
-              benchB: !isTeamA ? bench : prev.benchB, 
-              substitutionsA: isTeamA ? prev.substitutionsA + 1 : prev.substitutionsA, 
-              substitutionsB: !isTeamA ? prev.substitutionsB + 1 : prev.substitutionsB 
+          const playerOut = currentRotation[playerOutIndex];
+          const playerIn = currentBench[playerInIndex];
+
+          const newRotation = [...currentRotation];
+          newRotation[playerOutIndex] = playerIn;
+
+          const newBench = [...currentBench];
+          newBench[playerInIndex] = playerOut;
+
+          return {
+              ...prev,
+              rotationA: isTeamA ? newRotation : prev.rotationA,
+              rotationB: !isTeamA ? newRotation : prev.rotationB,
+              benchA: isTeamA ? newBench : prev.benchA,
+              benchB: !isTeamA ? newBench : prev.benchB,
+              substitutionsA: isTeamA ? prev.substitutionsA + 1 : prev.substitutionsA,
+              substitutionsB: !isTeamA ? prev.substitutionsB + 1 : prev.substitutionsB,
           };
       });
+      setShowSubModal(null);
   };
 
-  const processRequest = (reqId: string, action: 'approve' | 'reject') => {
-      updateLiveMatch(prev => {
-          if (!prev) return null;
-          const req = prev.requests.find(r => r.id === reqId);
-          if (!req) return prev;
-          if (action === 'approve') {
-             if (req.type === 'timeout') {
-                 const fixture = activeTournament?.fixtures?.find(f => f.id === prev.matchId);
-                 const isTeamA = req.teamId === fixture?.teamAId;
-                 return { ...prev, timeoutsA: isTeamA ? prev.timeoutsA + 1 : prev.timeoutsA, timeoutsB: !isTeamA ? prev.timeoutsB + 1 : prev.timeoutsB, requests: prev.requests.filter(r => r.id !== reqId) };
-             } else if (req.type === 'substitution' && req.subDetails) { applySubstitution(req.teamId, req.subDetails.playerOutId, req.subDetails.playerInId); }
-          }
-          return { ...prev, requests: prev.requests.filter(r => r.id !== reqId) };
-      });
-  };
-
-  const handleModifyRotation = (teamId: string) => {
-      if(!liveMatch || !activeTournament) return;
-      const fixture = activeTournament.fixtures?.find(f => f.id === liveMatch.matchId);
-      const isTeamA = fixture?.teamAId === teamId;
-      const rotation = isTeamA ? liveMatch.rotationA : liveMatch.rotationB;
-      setRotationInput(rotation.map(p => p.number.toString()));
+  const initiateRotationCheck = (teamId: string) => {
+      if (!liveMatch) return;
+      // Identify current rotation to pre-fill
+      const fixture = activeTournament?.fixtures?.find(f => f.id === liveMatch.matchId);
+      const isTeamA = teamId === fixture?.teamAId;
+      const currentRot = isTeamA ? liveMatch.rotationA : liveMatch.rotationB;
+      
+      setRotationInput(currentRot.map(p => p.number.toString()));
       setShowRotationModal({ teamId });
   };
 
-  const confirmRotation = () => {
-      if(!liveMatch || !showRotationModal || !activeTournament) return;
-      const team = activeTournament.teams?.find(t => t.id === showRotationModal.teamId);
+  const handleUpdateRotation = () => {
+      if (!liveMatch || !showRotationModal || !activeTournament) return;
+      const { teamId } = showRotationModal;
+      const fixture = activeTournament.fixtures?.find(f => f.id === liveMatch.matchId);
+      const isTeamA = teamId === fixture?.teamAId;
+      
+      const team = activeTournament.teams.find(t => t.id === teamId);
       if (!team) return;
+
       const newRotation: Player[] = [];
-      const newBench: Player[] = [];
-      rotationInput.forEach(numStr => {
+      for (const numStr of rotationInput) {
           const num = parseInt(numStr);
-          const player = team.players.find(p => p.number === num);
-          if (player) newRotation.push(player); else newRotation.push(createEmptyPlayer(`${team.id}-temp-${num}`, num));
-      });
-      if (newRotation.length !== 6) { alert("Debes ingresar 6 números."); return; }
-      team.players.forEach(p => { if (!newRotation.find(nr => nr.id === p.id)) newBench.push(p); });
-      updateLiveMatch(prev => {
-          if (!prev) return null;
-          const fixture = activeTournament.fixtures?.find(f => f.id === prev.matchId);
-          const isTeamA = fixture?.teamAId === showRotationModal.teamId;
-          return { ...prev, rotationA: isTeamA ? newRotation : prev.rotationA, rotationB: !isTeamA ? newRotation : prev.rotationB, benchA: isTeamA ? newBench : prev.benchA, benchB: !isTeamA ? newBench : prev.benchB };
-      });
+          const p = team.players.find(pl => pl.number === num);
+          if (p) newRotation.push(p);
+      }
+
+      if (newRotation.length !== 6) {
+          alert("Debes especificar 6 jugadores válidos.");
+          return;
+      }
+
+      // Remaining players go to bench
+      const newBench = team.players.filter(p => !newRotation.find(r => r.id === p.id));
+
+      updateLiveMatch(prev => prev ? {
+          ...prev,
+          rotationA: isTeamA ? newRotation : prev.rotationA,
+          rotationB: !isTeamA ? newRotation : prev.rotationB,
+          benchA: isTeamA ? newBench : prev.benchA,
+          benchB: !isTeamA ? newBench : prev.benchB
+      } : null);
+      
       setShowRotationModal(null);
   };
 
-  const getMatchStats = () => {
-    if (!liveMatch || !activeTournament) return [];
-    const allHistory = liveMatch.sets?.flatMap(s => s.history || []) || [];
-    const statsMap: Record<string, {name: string, team: string, points: number, aces: number, blocks: number}> = {};
-    allHistory.forEach(h => {
-        if (h.playerId) {
-            if (!statsMap[h.playerId]) {
-                 let player: Player | undefined; let teamName = "Unknown";
-                 activeTournament.teams?.forEach(t => { const f = t.players.find(p => p.id === h.playerId); if(f) { player = f; teamName = t.name; } });
-                 if (player) statsMap[h.playerId] = { name: player.name, team: teamName, points: 0, aces: 0, blocks: 0 };
-            }
-            if (statsMap[h.playerId]) {
-                if (h.type === 'attack') statsMap[h.playerId].points++;
-                if (h.type === 'ace') { statsMap[h.playerId].points++; statsMap[h.playerId].aces++; }
-                if (h.type === 'block') { statsMap[h.playerId].points++; statsMap[h.playerId].blocks++; }
-            }
-        }
-    });
-    return Object.values(statsMap).sort((a,b) => b.points - a.points);
-  };
-
-  // ... (MenuButton, Icons, Logout, etc.)
-  const MenuButton = ({ title, icon, onClick, subtext }: { title: string, icon: React.ReactNode, onClick: () => void, subtext: string }) => (
-      <button 
-        onClick={onClick}
-        className="relative group overflow-hidden bg-corp-panel border border-white/5 rounded-2xl p-6 hover:border-corp-accent/50 transition-all duration-300 hover:shadow-lg hover:shadow-corp-accent/10 flex flex-col items-start text-left h-full"
-      >
-          <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity transform group-hover:scale-110 duration-500 text-5xl grayscale">
-              {icon}
-          </div>
-          <div className="mb-4 p-3 bg-corp-bg rounded-lg text-corp-accent group-hover:bg-corp-accent group-hover:text-white transition-colors">
-              {icon}
-          </div>
-          <h3 className="text-lg font-bold text-white mb-1">{title}</h3>
-          <p className="text-xs text-slate-400 font-medium">{subtext}</p>
-      </button>
-  );
-
-  const HomeIcons = {
-      Trophy: <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>,
-      Users: <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>,
-      Play: <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>,
-      Settings: <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73-.73l.22-.38a2 2 0 0 0-.73-2.73l-.15-.1a2 2 0 0 1-1-1.72v-.51a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43.25a2 2 0 0 1-1 1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>,
-      Chart: <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" x2="18" y1="20" y2="10"/><line x1="12" x2="12" y1="20" y2="4"/><line x1="6" x2="6" y1="20" y2="14"/></svg>
-  };
-
-  const handleLogout = () => {
-    setLiveMatch(null);
-    setCurrentUser(null);
-    setTvMode(false);
-  };
-
-  // --- VIEWER & REFEREE PRE-RENDER LOGIC ---
-  let fixture: MatchFixture | undefined;
-  let teamA: Team | undefined;
-  let teamB: Team | undefined;
-
-  if (activeTournament && liveMatch) {
-      fixture = activeTournament.fixtures?.find(f => f.id === liveMatch.matchId);
-      if (fixture) {
-          teamA = activeTournament.teams?.find(t => t.id === fixture?.teamAId);
-          teamB = activeTournament.teams?.find(t => t.id === fixture?.teamBId);
-      }
-  }
-
-  // --- VIEWS ---
+  // --- RENDER HELPERS ---
 
   if (!currentUser) {
       return (
-          <>
-            <Login 
-                onLogin={setCurrentUser} 
-                users={users} 
-                isCloudConnected={isCloudConnected} 
-                onOpenCloudConfig={() => setShowCloudConfig(true)}
-            />
-            {showCloudConfig && <CloudConfig onClose={() => setShowCloudConfig(false)} onConnected={() => setIsCloudConnected(true)} currentUser={currentUser} />}
-          </>
+          <Login 
+            onLogin={(u) => { setCurrentUser(u); if(u.role !== 'VIEWER') initCloud(loadConfig()?.config || {}, loadConfig()?.organizationId || ''); }}
+            users={users}
+            isCloudConnected={isCloudConnected}
+            onOpenCloudConfig={() => setShowCloudConfig(true)}
+          />
       );
   }
-
-  if (tvMode && liveMatch && activeTournament && teamA && teamB) {
-      return <TVOverlay 
-                match={liveMatch} 
-                teamA={teamA} 
-                teamB={teamB} 
-                tournament={activeTournament} 
-                currentUser={currentUser} 
-                onExit={() => { setTvMode(false); setCurrentView('fixture'); }} 
-                onLogout={handleLogout}
-                onNextSet={handleStartNextSet} 
-                nextSetCountdown={nextSetCountdown} 
-                tournamentStats={getMatchStats()} 
-                showStatsOverlay={showStatsOnTV} 
-                showScoreboard={showScoreboardOnTV} 
-                isCloudConnected={isCloudConnected} 
-              />;
-  }
-
+  
+  // Render Main App
   return (
     <Layout 
-        currentUser={currentUser} 
-        onLogout={handleLogout} 
-        onNavigate={setCurrentView} 
-        currentView={currentView} 
-        isCloudConnected={isCloudConnected} 
-        onOpenCloudConfig={() => setShowCloudConfig(true)}
+      currentUser={currentUser} 
+      onLogout={() => { setCurrentUser(null); setLiveMatch(null); setCurrentView('home'); }} 
+      onNavigate={setCurrentView}
+      currentView={currentView}
+      isCloudConnected={isCloudConnected}
+      onOpenCloudConfig={() => setShowCloudConfig(true)}
     >
-      {showCloudConfig && <CloudConfig onClose={() => setShowCloudConfig(false)} onConnected={() => setIsCloudConnected(true)} currentUser={currentUser} />}
-
-      {/* ... (Home, Lobby, Dashboard, Stats, Teams, Users views remain unchanged) ... */}
-      {currentView === 'home' && (
-          <div className="max-w-4xl mx-auto py-8 animate-in fade-in slide-in-from-bottom-4">
-              <div className="mb-8">
-                  <h1 className="text-3xl font-bold text-white mb-2">Hola, {currentUser.username}</h1>
-                  <p className="text-slate-400 text-sm">Bienvenido al panel de control.</p>
-              </div>
-
-              {activeTournament && (
-                  <div className="mb-8 bg-gradient-to-r from-blue-900 to-corp-panel rounded-2xl p-6 border border-white/5 relative overflow-hidden shadow-2xl">
-                      <div className="relative z-10">
-                          <span className="text-xs font-bold text-blue-300 uppercase tracking-widest bg-blue-900/50 px-2 py-1 rounded">Torneo Activo</span>
-                          <h2 className="text-2xl font-bold text-white mt-2 mb-4">{activeTournament.name}</h2>
-                          <div className="flex gap-3">
-                              <button onClick={() => setCurrentView('dashboard')} className="bg-white text-blue-900 px-5 py-2 rounded-lg font-bold text-sm hover:bg-blue-50 transition">Ver Dashboard</button>
-                              {liveMatch && liveMatch.matchId && activeTournament.fixtures?.find(f => f.id === liveMatch.matchId) && (
-                                 <button onClick={() => setCurrentView('match')} className="bg-red-500 text-white px-5 py-2 rounded-lg font-bold text-sm hover:bg-red-600 transition animate-pulse">🔴 Ir al Partido</button>
-                              )}
-                          </div>
-                      </div>
-                  </div>
-              )}
-
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  <MenuButton title="Torneos" icon={HomeIcons.Trophy} subtext="Gestionar campeonatos y fixtures" onClick={() => setCurrentView('lobby')} />
-                  {(currentUser.role === 'ADMIN' || currentUser.role.includes('COACH')) && <MenuButton title="Equipos" icon={HomeIcons.Users} subtext="Administrar planteles y jugadores" onClick={() => setCurrentView('teams')} />}
-                  {activeTournament && <MenuButton title="Fixture" icon={HomeIcons.Play} subtext="Calendario de partidos" onClick={() => setCurrentView('fixture')} />}
-                  {activeTournament && <MenuButton title="Estadísticas" icon={HomeIcons.Chart} subtext="Tablas y Mejores Jugadores" onClick={() => setCurrentView('stats')} />}
-                  {(currentUser.role === 'ADMIN' || currentUser.role.includes('COACH')) && <MenuButton title={currentUser.role === 'ADMIN' ? "Admin" : "Usuarios"} icon={HomeIcons.Settings} subtext="Gestión de usuarios y accesos" onClick={() => setCurrentView('users')} />}
-              </div>
-          </div>
-      )}
-
-      {currentView === 'lobby' && (
-         <div className="max-w-5xl mx-auto space-y-8">
-            <div className="flex justify-between items-center pb-4 border-b border-white/5">
-                <div>
-                    <h1 className="text-2xl font-bold text-white tracking-tight">Mis Torneos</h1>
-                    <p className="text-slate-400 text-sm mt-1">Selecciona una competencia para gestionar</p>
-                </div>
-                {(currentUser.role === 'ADMIN') && (
-                    <button onClick={() => setShowCreateTourneyModal(true)} className="bg-corp-accent hover:bg-corp-accent-hover text-white px-5 py-2.5 rounded-lg font-bold text-sm shadow-lg transition">+ Nuevo Torneo</button>
-                )}
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-               {tournaments.map(t => (
-                   <div key={t.id} onClick={() => { setActiveTournamentId(t.id); setCurrentView('dashboard'); }} className="group relative bg-corp-panel border border-white/5 rounded-xl overflow-hidden cursor-pointer hover:border-corp-accent/50 hover:shadow-xl hover:shadow-corp-accent/10 transition-all duration-300">
-                      <div className="h-32 bg-gradient-to-br from-slate-800 to-black flex items-center justify-center p-6 relative">
-                          {t.logoUrl ? <img src={t.logoUrl} className="h-full object-contain filter drop-shadow-2xl" /> : <div className="text-5xl text-white/10">🏆</div>}
-                      </div>
-                      <div className="p-5">
-                          <h3 className="font-bold text-lg text-white mb-2 group-hover:text-corp-accent transition-colors">{t.name}</h3>
-                          <div className="flex justify-between items-center text-sm text-slate-400">
-                              <span>{t.teams?.length || 0} Equipos</span>
-                              <span className="bg-green-500/10 text-green-400 text-[10px] font-bold px-2 py-0.5 rounded uppercase">Activo</span>
-                          </div>
-                      </div>
-                   </div>
-               ))}
-               {tournaments.length === 0 && (
-                   <div className="col-span-full text-center py-16 bg-corp-panel/50 border border-dashed border-slate-700 rounded-xl">
-                       <p className="text-slate-500 font-medium">No hay torneos disponibles</p>
-                   </div>
-               )}
-            </div>
-         </div>
-      )}
-
-      {currentView === 'dashboard' && activeTournament && (
-         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2">
-             <div className="bg-corp-panel border border-white/5 p-8 rounded-2xl shadow-xl relative overflow-hidden">
-                <div className="relative z-10 flex flex-col md:flex-row items-center gap-8">
-                    {activeTournament.logoUrl ? <img src={activeTournament.logoUrl} alt="Logo" className="h-32 w-32 object-contain drop-shadow-md bg-white/5 rounded-xl p-2" /> : <div className="h-32 w-32 bg-white/5 rounded-xl flex items-center justify-center border border-white/10 text-4xl">🏐</div>}
-                    <div className="text-center md:text-left flex-1">
-                        <h2 className="text-4xl font-bold text-white tracking-tight mb-2">{activeTournament.name}</h2>
-                        <div className="flex flex-wrap justify-center md:justify-start gap-3 mt-4">
-                             <button onClick={() => setCurrentView('fixture')} className="bg-corp-accent hover:bg-corp-accent-hover text-white px-6 py-2.5 rounded-lg font-bold shadow-lg shadow-blue-500/20 transition-all transform hover:-translate-y-0.5">Ver Fixture</button>
-                             <button onClick={() => setCurrentView('stats')} className="bg-white/10 hover:bg-white/20 text-white px-6 py-2.5 rounded-lg font-bold transition">Estadísticas</button>
-                             {currentUser.role === 'ADMIN' && <button onClick={handleDeleteTournament} className="text-red-400 hover:text-red-300 text-sm font-bold uppercase tracking-widest px-4 py-2">Eliminar Torneo</button>}
-                        </div>
-                    </div>
-                </div>
-             </div>
-         </div>
-      )}
-
-      {currentView === 'stats' && activeTournament && (
-         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 max-w-6xl mx-auto">
-             <div>
-                <h2 className="text-2xl font-bold text-white tracking-tight mb-2">Estadísticas del Torneo</h2>
-                <p className="text-slate-400 text-sm">Tabla de posiciones y rendimiento de jugadores.</p>
-             </div>
-
-             <div>
-                <h3 className="text-lg font-bold text-vnl-accent uppercase tracking-widest mb-4 border-b border-white/10 pb-2">Tabla de Posiciones</h3>
-                <StandingsTable tournament={activeTournament} />
-             </div>
-
-             <div>
-                <h3 className="text-lg font-bold text-vnl-accent uppercase tracking-widest mb-4 border-b border-white/10 pb-2">Mejores Jugadores</h3>
-                <TopPlayers tournament={activeTournament} />
-             </div>
-         </div>
-      )}
-
-      {currentView === 'teams' && (
-        <div className="space-y-6">
-           <div className="flex justify-between items-end border-b border-white/5 pb-3">
-              <h2 className="text-2xl font-bold text-white tracking-tight">Equipos <span className="text-slate-500 text-lg font-medium ml-2">{registeredTeams.length}</span></h2>
-           </div>
-           {(currentUser.role === 'ADMIN') && (
-               <div className="bg-corp-panel/50 p-6 border border-white/5 rounded-xl mb-8">
-                   <h3 className="font-bold text-sm text-corp-accent uppercase tracking-widest mb-4">Registro Rápido</h3>
-                   <form onSubmit={handleAddTeam} className="flex flex-col md:flex-row gap-4 items-end">
-                       <input type="text" placeholder="Nombre del Equipo" className="flex-1 bg-black/20 border border-white/10 rounded-lg p-3 text-white text-sm focus:border-corp-accent outline-none" value={newTeamName} onChange={(e) => setNewTeamName(e.target.value)} />
-                       <input type="text" placeholder="Entrenador" className="flex-1 bg-black/20 border border-white/10 rounded-lg p-3 text-white text-sm focus:border-corp-accent outline-none" value={newTeamCoach} onChange={(e) => setNewTeamCoach(e.target.value)} />
-                       <div className="w-full md:w-auto relative">
-                           <input type="file" accept="image/*" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" onChange={(e) => handleFileUpload(e, setNewTeamLogo)} />
-                           <button type="button" className="bg-white/5 border border-white/10 text-slate-300 px-4 py-3 rounded-lg font-bold text-xs w-full hover:bg-white/10">Subir Logo</button>
-                       </div>
-                       <button type="submit" className="bg-corp-accent text-white px-6 py-3 rounded-lg font-bold hover:bg-corp-accent-hover transition">Añadir</button>
-                   </form>
-               </div>
-           )}
-           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-               {registeredTeams.map(team => (
-                   <div key={team.id} className="bg-corp-panel border border-white/5 rounded-xl hover:border-corp-accent/30 transition group overflow-hidden relative">
-                       {/* Team card content ... */}
-                       <div className="p-4 flex items-center justify-between bg-black/20">
-                           <div className="flex items-center gap-3">
-                               <div className="w-12 h-12 bg-white rounded-lg p-1 flex items-center justify-center shadow-lg overflow-hidden">
-                                   {team.logoUrl ? <img src={team.logoUrl} className="object-contain w-full h-full" /> : <span className="text-black font-bold text-xl">{team.name[0]}</span>}
-                               </div>
-                               <div>
-                                   <h3 className="font-bold text-white text-lg leading-tight">{team.name}</h3>
-                                   <p className="text-xs text-slate-400 font-medium mt-0.5">DT: {team.coachName}</p>
-                               </div>
-                           </div>
-                           {(currentUser.role === 'ADMIN') && (
-                               <div className="flex gap-2">
-                                   <button onClick={() => setEditingTeam(team)} className="text-xs text-corp-accent hover:text-white font-bold uppercase">Editar</button>
-                                   <button onClick={() => handleDeleteTeam(team.id)} className="text-xs text-red-500 hover:text-red-400 font-bold uppercase">Eliminar</button>
-                               </div>
-                           )}
-                       </div>
-                       <div className="p-4 grid grid-cols-2 gap-2">
-                           {team.players?.slice(0, 14).map(p => (
-                               <div key={p.id} onClick={() => setEditingPlayer(p)} className="flex items-center gap-2 p-1.5 hover:bg-white/5 rounded cursor-pointer transition">
-                                   <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold ${p.name === 'Libero' ? 'bg-yellow-500 text-black' : 'bg-slate-700 text-white'}`}>{p.number}</div>
-                                   <div className="truncate text-xs font-medium text-slate-300">{p.name}</div>
-                               </div>
-                           ))}
-                       </div>
-                   </div>
-               ))}
-           </div>
-        </div>
-      )}
-
-      {currentView === 'users' && (isAdmin || currentUser.role.includes('COACH')) && (
-          <UserManagement 
-              users={users} 
-              teams={registeredTeams} 
-              currentUser={currentUser} 
-              onAddUser={handleAddUser} 
-              onDeleteUser={handleDeleteUser} 
-              onUpdateUser={handleUpdateUser} 
-              onSystemReset={isAdmin ? handleSystemReset : undefined} 
+      {/* CLOUD CONFIG MODAL */}
+      {showCloudConfig && (
+          <CloudConfig 
+            onClose={() => setShowCloudConfig(false)}
+            onConnected={() => setIsCloudConnected(true)}
+            currentUser={currentUser}
           />
       )}
 
-      {currentView === 'fixture' && activeTournament && (
-          <div className="space-y-6">
-              <h2 className="text-2xl font-bold text-white tracking-tight mb-8">Calendario y Resultados</h2>
-              <div className="space-y-4">
-                  {[...(activeTournament.fixtures || [])].sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime()).map((fixture) => {
-                      const teamA = activeTournament.teams?.find(t => t.id === fixture.teamAId);
-                      const teamB = activeTournament.teams?.find(t => t.id === fixture.teamBId);
-                      if (!teamA || !teamB) return null;
-                      const isLive = fixture.status === 'live';
-                      
-                      return (
-                          <div key={fixture.id} className={`flex flex-col md:flex-row bg-corp-panel border ${isLive ? 'border-red-500/50 shadow-lg shadow-red-500/10' : 'border-white/5 hover:border-white/20'} rounded-xl transition overflow-hidden group`}>
-                              <div className={`md:w-32 flex flex-col items-center justify-center p-4 border-b md:border-b-0 md:border-r border-white/5 ${isLive ? 'bg-red-900/10' : 'bg-black/10'}`}>
-                                  <span className="text-xs font-bold text-slate-400 uppercase">{fixture.group}</span>
-                                  {currentUser.role === 'ADMIN' ? (
-                                      <input type="date" value={fixture.date} onChange={(e) => handleUpdateFixtureDate(fixture.id, e.target.value)} className="bg-transparent text-white font-bold text-xs mt-1 text-center outline-none" />
-                                  ) : <span className="text-white font-bold text-sm mt-1">{fixture.date}</span>}
-                                  {isLive && <span className="mt-2 bg-red-600 text-white text-[10px] px-2 py-0.5 font-bold uppercase rounded-full animate-pulse">LIVE</span>}
-                              </div>
+      {/* VIEWS */}
+      
+      {/* 1. HOME VIEW */}
+      {currentView === 'home' && (
+         <div className="flex flex-col items-center justify-center min-h-[60vh] text-center space-y-8 animate-in fade-in zoom-in-95 duration-500">
+             <div className="relative">
+                 <div className="absolute -inset-4 bg-gradient-to-r from-blue-600 to-vnl-accent opacity-20 blur-xl rounded-full"></div>
+                 <h1 className="relative text-5xl md:text-7xl font-black text-white italic tracking-tighter">
+                     JSPORT <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-300">MANAGER</span>
+                 </h1>
+             </div>
+             
+             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full max-w-2xl">
+                 <button onClick={() => setCurrentView('lobby')} className="bg-corp-panel hover:bg-white/5 border border-white/10 p-6 rounded-xl group transition duration-300">
+                     <span className="text-4xl mb-2 block group-hover:scale-110 transition">🏆</span>
+                     <h3 className="text-xl font-bold text-white uppercase italic">Torneos</h3>
+                     <p className="text-sm text-slate-500 mt-1">Gestionar campeonatos y fixtures</p>
+                 </button>
+                 <button onClick={() => setCurrentView('teams')} className="bg-corp-panel hover:bg-white/5 border border-white/10 p-6 rounded-xl group transition duration-300">
+                     <span className="text-4xl mb-2 block group-hover:scale-110 transition">👥</span>
+                     <h3 className="text-xl font-bold text-white uppercase italic">Equipos</h3>
+                     <p className="text-sm text-slate-500 mt-1">Administrar plantillas y jugadores</p>
+                 </button>
+                 {isAdmin && (
+                    <button onClick={() => setCurrentView('users')} className="bg-corp-panel hover:bg-white/5 border border-white/10 p-6 rounded-xl group transition duration-300 md:col-span-2">
+                        <span className="text-4xl mb-2 block group-hover:scale-110 transition">⚙️</span>
+                        <h3 className="text-xl font-bold text-white uppercase italic">Administración</h3>
+                        <p className="text-sm text-slate-500 mt-1">Usuarios y Configuración del Sistema</p>
+                    </button>
+                 )}
+             </div>
+         </div>
+      )}
 
-                              <div className="flex-1 flex items-center justify-between p-4 md:px-8 relative">
-                                  <div className="flex items-center gap-4 flex-1 justify-end">
-                                      <span className="text-lg md:text-xl font-bold text-white text-right">{teamA.name}</span>
-                                      {teamA.logoUrl && <img src={teamA.logoUrl} className="w-10 h-10 object-contain bg-white rounded-full p-1" />}
-                                  </div>
-                                  <div className="px-6 flex flex-col items-center">
-                                      {fixture.status === 'finished' ? (
-                                          <div className="bg-white/5 px-4 py-2 rounded-lg border border-white/10">
-                                              <span className="text-2xl font-bold text-yellow-400 tracking-wider">{fixture.resultString}</span>
-                                          </div>
-                                      ) : <span className="text-sm font-bold text-slate-500 uppercase">VS</span>}
-                                  </div>
-                                  <div className="flex items-center gap-4 flex-1">
-                                      {teamB.logoUrl && <img src={teamB.logoUrl} className="w-10 h-10 object-contain bg-white rounded-full p-1" />}
-                                      <span className="text-lg md:text-xl font-bold text-white">{teamB.name}</span>
-                                  </div>
-                              </div>
-
-                              <div className="md:w-40 flex items-center justify-center p-4 bg-black/10 border-t md:border-t-0 md:border-l border-white/5 gap-2">
-                                  {isLive ? (
-                                      <button onClick={() => handleInitiateMatch(fixture.id, 'control')} className="bg-red-600 hover:bg-red-500 text-white px-6 py-2 rounded-full font-bold text-xs shadow-lg transition transform hover:scale-105">
-                                          {currentUser.role === 'REFEREE' ? 'Ver Cancha' : 'Ver Ahora'}
-                                      </button>
-                                  ) : fixture.status === 'finished' ? (
-                                      <div className="flex flex-col items-center gap-1">
-                                          <span className="text-xs text-slate-500 font-bold uppercase tracking-widest">Finalizado</span>
-                                          {currentUser.role === 'ADMIN' && (
-                                              <button onClick={() => handleResetMatch(fixture.id)} className="text-[10px] text-red-400 hover:text-white uppercase font-bold underline">Reiniciar</button>
-                                          )}
-                                      </div>
-                                  ) : (
-                                      <>
-                                          <button onClick={() => handleInitiateMatch(fixture.id, 'control')} className="border border-white/20 hover:bg-white/5 text-white px-4 py-2 rounded-full font-bold text-xs transition">
-                                              {currentUser.role === 'ADMIN' ? 'Controlar' : currentUser.role === 'REFEREE' ? 'Ingresar' : 'Entrar'}
-                                          </button>
-                                          {currentUser.role === 'ADMIN' && (
-                                              <button 
-                                                onClick={() => handleInitiateMatch(fixture.id, 'preview')} 
-                                                className="bg-white/10 hover:bg-white/20 text-white p-2 rounded-full transition"
-                                                title="Transmitir Previa"
-                                              >
-                                                  🎥
-                                              </button>
-                                          )}
-                                      </>
-                                  )}
+      {/* 2. LOBBY VIEW (Tournaments List) */}
+      {currentView === 'lobby' && (
+          <div className="space-y-6 animate-in slide-in-from-right-4">
+              <div className="flex justify-between items-center">
+                  <h2 className="text-3xl font-black text-white uppercase italic tracking-tighter">Torneos <span className="text-vnl-accent">Activos</span></h2>
+                  {isAdmin && (
+                      <button onClick={() => setShowCreateTourneyModal(true)} className="bg-vnl-accent hover:bg-cyan-400 text-black font-black px-6 py-3 rounded shadow-[0_0_15px_rgba(6,182,212,0.3)] transition uppercase text-xs tracking-widest">
+                          + Nuevo Torneo
+                      </button>
+                  )}
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {tournaments.map(t => (
+                      <div key={t.id} onClick={() => { setActiveTournamentId(t.id); setCurrentView('dashboard'); }} className="bg-corp-panel border border-white/10 rounded-xl overflow-hidden hover:border-vnl-accent/50 transition cursor-pointer group">
+                          <div className="h-32 bg-gradient-to-br from-blue-900/40 to-black relative flex items-center justify-center p-4">
+                              {t.logoUrl ? <img src={t.logoUrl} className="h-full w-full object-contain drop-shadow-lg group-hover:scale-110 transition duration-500" /> : <span className="text-6xl group-hover:scale-110 transition duration-500">🏆</span>}
+                          </div>
+                          <div className="p-4">
+                              <h3 className="text-xl font-black text-white uppercase italic tracking-tight">{t.name}</h3>
+                              <p className="text-xs text-slate-400 font-bold uppercase mt-1">{t.teams.length} Equipos • {t.fixtures?.length || 0} Partidos</p>
+                              <div className="mt-4 flex justify-between items-center">
+                                  <span className="text-[10px] bg-white/10 px-2 py-1 rounded text-slate-300">{new Date(t.startDate).toLocaleDateString()}</span>
+                                  <span className="text-vnl-accent text-xs font-bold uppercase tracking-widest group-hover:translate-x-1 transition">Ver Panel →</span>
                               </div>
                           </div>
-                      );
-                  })}
+                      </div>
+                  ))}
+                  {tournaments.length === 0 && (
+                      <div className="col-span-full py-20 text-center text-slate-600 font-bold uppercase tracking-widest">No hay torneos creados</div>
+                  )}
               </div>
           </div>
       )}
 
-      {/* --- MATCH VIEW --- */}
-      {currentView === 'match' && liveMatch && activeTournament && fixture && teamA && teamB && (
-        <div className="max-w-7xl mx-auto pb-20">
-            {/* Header */}
-            <div className="flex justify-between items-center mb-6 bg-corp-panel/80 border border-white/10 p-4 shadow-lg rounded-xl sticky top-20 z-40 backdrop-blur-md">
-                <div className="flex items-center gap-4">
-                    {liveMatch.status === 'finished' ? (
-                        <span className="bg-slate-700 text-white text-xs font-bold px-3 py-1 rounded-full uppercase">FINALIZADO</span>
-                    ) : liveMatch.status === 'finished_set' ? (
-                        <span className="bg-yellow-500 text-black text-xs font-bold px-3 py-1 rounded-full uppercase animate-pulse">FIN SET {liveMatch.currentSet}</span>
-                    ) : (
-                        <span className="bg-red-600 text-white text-xs font-bold px-3 py-1 rounded-full uppercase animate-pulse">LIVE</span>
-                    )}
-                    <span className="text-slate-300 font-bold uppercase text-sm tracking-wider">Set <span className="text-white text-lg">{liveMatch.currentSet}</span></span>
-                    
-                    {liveMatch.status === 'warmup' && currentUser?.role === 'ADMIN' && (
-                       <button 
-                         onClick={handleStartGame}
-                         className="ml-4 bg-green-600 hover:bg-green-500 text-white px-4 py-1 rounded shadow-lg animate-bounce font-bold text-xs uppercase"
-                       >
-                         ▶ Iniciar Partido
-                       </button>
-                    )}
-                </div>
-                
-                <div className="flex gap-2">
-                   {(currentUser?.role === 'ADMIN') && (
-                       <>
-                           <button onClick={openEditRules} className="bg-white/10 text-slate-300 px-3 py-1.5 rounded-lg font-bold text-xs uppercase hover:bg-white/20 hover:text-white transition flex items-center gap-1">
-                               <span>⚙️</span> Reglas
-                           </button>
-                           <button onClick={handleEndBroadcast} className="bg-red-600 hover:bg-red-500 text-white border border-red-500/30 px-4 py-1.5 rounded-lg font-bold text-xs uppercase transition shadow-lg shadow-red-900/20 flex items-center gap-2">
-                               <span>🏁</span> {liveMatch.status === 'finished' ? 'Confirmar y Salir' : 'Finalizar Partido'}
-                           </button>
-                           <button onClick={() => setShowScoreboardOnTV(!showScoreboardOnTV)} className="bg-white/10 text-white px-3 py-1.5 rounded-lg font-bold text-xs uppercase hover:bg-white/20 transition">Score</button>
-                           <button onClick={() => setShowStatsOnTV(!showStatsOnTV)} className="bg-white/10 text-white px-3 py-1.5 rounded-lg font-bold text-xs uppercase hover:bg-white/20 transition">Stats</button>
-                       </>
-                   )}
-                   {(currentUser.role === 'ADMIN' || currentUser.role === 'VIEWER') && (
-                        <button onClick={() => setTvMode(true)} className="bg-corp-accent text-white px-4 py-1.5 rounded-lg font-bold text-xs uppercase hover:bg-corp-accent-hover transition">TV Mode</button>
-                   )}
-                   <button onClick={() => setCurrentView('fixture')} className="border border-white/20 text-slate-400 px-4 py-1.5 rounded-lg font-bold text-xs uppercase hover:text-white transition">Exit</button>
-                </div>
-            </div>
+      {/* 3. DASHBOARD VIEW (Single Tournament) */}
+      {currentView === 'dashboard' && activeTournament && (
+          <div className="space-y-8 animate-in slide-in-from-right-4">
+               {/* Tournament Header */}
+               <div className="flex flex-col md:flex-row justify-between items-start md:items-end border-b border-white/10 pb-4 gap-4">
+                   <div className="flex items-center gap-4">
+                       <button onClick={() => setCurrentView('lobby')} className="text-slate-500 hover:text-white transition">← Volver</button>
+                       {activeTournament.logoUrl && <img src={activeTournament.logoUrl} className="w-16 h-16 object-contain" />}
+                       <div>
+                           <h1 className="text-4xl font-black text-white uppercase italic tracking-tighter leading-none">{activeTournament.name}</h1>
+                           <div className="flex gap-4 mt-2 text-xs font-bold text-slate-400 uppercase tracking-widest">
+                               <span>📅 {new Date(activeTournament.startDate).toLocaleDateString()}</span>
+                               <span>👥 {activeTournament.teams.length} Teams</span>
+                           </div>
+                       </div>
+                   </div>
+                   
+                   <div className="flex gap-2">
+                       <button onClick={() => setCurrentView('fixture')} className="bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded text-xs font-bold uppercase tracking-widest transition">Fixture</button>
+                       <button onClick={() => setCurrentView('standings')} className="bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded text-xs font-bold uppercase tracking-widest transition">Tabla</button>
+                       <button onClick={() => setCurrentView('stats')} className="bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded text-xs font-bold uppercase tracking-widest transition">Estadísticas</button>
+                       {isAdmin && (
+                           <button onClick={handleDeleteTournament} className="bg-red-900/30 hover:bg-red-900/50 text-red-400 border border-red-500/30 px-4 py-2 rounded text-xs font-bold uppercase tracking-widest transition">Eliminar</button>
+                       )}
+                   </div>
+               </div>
 
-            {/* Set Management Panel - Admin Only */}
-            {currentUser?.role === 'ADMIN' && (
-                <div className="mb-6 bg-black/40 border border-white/10 p-4 rounded-xl">
-                    <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-3">Gestión de Sets</h3>
-                    <div className="grid grid-cols-5 gap-2">
-                        {Array.from({ length: liveMatch.config.maxSets }).map((_, i) => {
-                            const setNumber = i + 1;
-                            const setData = liveMatch.sets[i];
-                            const isCurrent = liveMatch.currentSet === setNumber;
-                            const isFinished = (setData && (setData.scoreA > 0 || setData.scoreB > 0) && (liveMatch.currentSet > setNumber || liveMatch.status === 'finished'));
-                            const isPending = !setData || (liveMatch.currentSet < setNumber && !isFinished);
-                            
-                            return (
-                                <div key={i} className={`flex flex-col items-center justify-between p-2 rounded border transition ${isCurrent ? 'bg-white/10 border-corp-accent' : 'bg-transparent border-white/5'} ${isFinished ? 'opacity-75' : ''}`}>
-                                    <span className="text-[10px] font-bold text-slate-400 uppercase">Set {setNumber}</span>
-                                    <span className="text-lg font-mono font-bold text-white my-1">{setData ? `${setData.scoreA}-${setData.scoreB}` : '0-0'}</span>
-                                    
-                                    {/* Unified Action Button for Current Set */}
-                                    {isCurrent && (liveMatch.status === 'playing' || liveMatch.status === 'finished_set') && (
-                                        <button 
-                                            onClick={() => {
-                                                if (liveMatch.status === 'finished_set') {
-                                                    handleStartNextSet();
-                                                } else {
-                                                    if(confirm("¿Forzar fin de set?")) {
-                                                        handleSetOperation('FINISH', i);
-                                                    }
-                                                }
-                                            }} 
-                                            className={`text-[9px] px-2 py-1 rounded w-full uppercase font-bold shadow-sm transition-all ${
-                                                liveMatch.status === 'finished_set' 
-                                                ? 'bg-green-600 hover:bg-green-500 text-white animate-pulse border border-green-400' 
-                                                : 'bg-blue-600 hover:bg-blue-500 text-white'
-                                            }`}
-                                        >
-                                            {liveMatch.status === 'finished_set' ? '>> Siguiente >>' : 'Finalizar'}
+               {/* Fixture / Matches List */}
+               <div className="grid gap-4">
+                   {activeTournament.fixtures?.map((fix) => {
+                       const teamA = activeTournament.teams.find(t => t.id === fix.teamAId);
+                       const teamB = activeTournament.teams.find(t => t.id === fix.teamBId);
+                       if (!teamA || !teamB) return null;
+
+                       const isLive = fix.status === 'live';
+                       const isFinished = fix.status === 'finished';
+
+                       return (
+                           <div key={fix.id} className={`bg-corp-panel border ${isLive ? 'border-red-500/50 shadow-[0_0_20px_rgba(239,68,68,0.2)]' : 'border-white/10'} rounded-lg p-4 flex flex-col md:flex-row items-center justify-between gap-4 group transition hover:bg-white/5`}>
+                               <div className="flex items-center gap-4 w-full md:w-1/3">
+                                   <div className="text-center w-12 shrink-0">
+                                       <div className="text-xs font-bold text-slate-500 uppercase">{new Date(fix.date).getDate()}</div>
+                                       <div className="text-[10px] font-black text-slate-600 uppercase">{new Date(fix.date).toLocaleString('es-ES', { month: 'short' })}</div>
+                                   </div>
+                                   <div className="flex flex-col">
+                                       <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{fix.group}</span>
+                                       <div className="flex items-center gap-2">
+                                           {isLive && <span className="bg-red-600 text-white text-[9px] px-1.5 py-0.5 rounded font-black uppercase animate-pulse">EN VIVO</span>}
+                                           {isFinished && <span className="bg-slate-700 text-white text-[9px] px-1.5 py-0.5 rounded font-black uppercase">FINAL</span>}
+                                       </div>
+                                   </div>
+                               </div>
+
+                               <div className="flex items-center justify-center gap-4 w-full md:w-1/3">
+                                   <div className={`flex items-center gap-2 ${fix.winnerId === teamA.id ? 'text-yellow-400' : 'text-white'}`}>
+                                       <span className="font-bold uppercase text-sm md:text-base text-right">{teamA.name}</span>
+                                       {teamA.logoUrl && <img src={teamA.logoUrl} className="w-8 h-8 object-contain" />}
+                                   </div>
+                                   <div className="bg-black/40 px-3 py-1 rounded text-xl font-black text-white font-mono tracking-widest">
+                                       {isFinished ? fix.resultString : isLive ? 'VS' : '-'}
+                                   </div>
+                                   <div className={`flex items-center gap-2 ${fix.winnerId === teamB.id ? 'text-yellow-400' : 'text-white'}`}>
+                                       {teamB.logoUrl && <img src={teamB.logoUrl} className="w-8 h-8 object-contain" />}
+                                       <span className="font-bold uppercase text-sm md:text-base">{teamB.name}</span>
+                                   </div>
+                               </div>
+
+                               <div className="w-full md:w-1/3 flex justify-end gap-2">
+                                   {isAdmin && (
+                                       <>
+                                         {isLive ? (
+                                             <button onClick={() => handleInitiateMatch(fix.id, 'control')} className="bg-green-600 hover:bg-green-500 text-white px-4 py-2 rounded text-xs font-black uppercase tracking-widest shadow-lg transition animate-pulse">
+                                                 Continuar
+                                             </button>
+                                         ) : isFinished ? (
+                                              <button onClick={() => handleResetMatch(fix.id)} className="text-xs font-bold text-slate-500 hover:text-red-400 uppercase tracking-wider px-3 py-2 border border-transparent hover:border-red-500/30 rounded transition">
+                                                 Reiniciar
+                                              </button>
+                                         ) : (
+                                              <button onClick={() => handleInitiateMatch(fix.id, 'control')} className="bg-vnl-accent hover:bg-cyan-400 text-black px-4 py-2 rounded text-xs font-black uppercase tracking-widest shadow transition">
+                                                  Iniciar
+                                              </button>
+                                         )}
+                                       </>
+                                   )}
+                                   {/* Viewers can watch live */}
+                                   {(isLive || isFinished) && !isAdmin && (
+                                        <button onClick={() => { setLiveMatch(liveMatch); setCurrentView('match'); setTvMode(true); }} className="bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded text-xs font-black uppercase tracking-widest border border-white/10 transition">
+                                            {isLive ? '🔴 Ver en Vivo' : 'Ver Resultado'}
+                                        </button>
+                                   )}
+                               </div>
+                           </div>
+                       );
+                   })}
+               </div>
+          </div>
+      )}
+
+      {/* MATCH VIEW */}
+      {currentView === 'match' && liveMatch && activeTournament && (
+          <div className="relative min-h-[85vh]">
+              {tvMode ? (
+                  <TVOverlay 
+                    match={liveMatch}
+                    teamA={activeTournament.teams.find(t => t.id === activeTournament?.fixtures?.find(f => f.id === liveMatch.matchId)?.teamAId)!}
+                    teamB={activeTournament.teams.find(t => t.id === activeTournament?.fixtures?.find(f => f.id === liveMatch.matchId)?.teamBId)!}
+                    tournament={activeTournament}
+                    currentUser={currentUser}
+                    onExit={() => setTvMode(false)}
+                    onLogout={currentUser.role === 'VIEWER' ? () => { setCurrentUser(null); setLiveMatch(null); setCurrentView('home'); } : undefined}
+                    onNextSet={handleStartNextSet}
+                    nextSetCountdown={nextSetCountdown}
+                    showStatsOverlay={showStatsOnTV}
+                    showScoreboard={showScoreboardOnTV}
+                    isCloudConnected={isCloudConnected}
+                  />
+              ) : (
+                <div className="space-y-4 pb-20">
+                     {/* Control Bar */}
+                     <div className="flex justify-between items-center bg-black/40 p-4 border-b border-white/10 rounded-t-xl backdrop-blur-md sticky top-16 z-30">
+                         <div className="flex items-center gap-4">
+                             <button onClick={() => setCurrentView('dashboard')} className="text-slate-400 hover:text-white font-bold text-xs uppercase tracking-widest">← Panel</button>
+                             <div className="h-6 w-px bg-white/10"></div>
+                             <span className="text-white font-black uppercase italic tracking-tighter text-lg">{activeTournament.name}</span>
+                             <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-widest ${liveMatch.status === 'live' || liveMatch.status === 'playing' ? 'bg-red-600 text-white animate-pulse' : 'bg-slate-700 text-slate-300'}`}>
+                                 {liveMatch.status === 'warmup' ? 'Calentamiento' : liveMatch.status === 'finished_set' ? 'Set Finalizado' : liveMatch.status === 'finished' ? 'Partido Finalizado' : 'En Vivo'}
+                             </span>
+                         </div>
+                         <div className="flex gap-2">
+                             {isAdmin && (
+                                 <>
+                                    <button onClick={openEditRules} className="bg-white/5 hover:bg-white/10 text-slate-300 px-3 py-1.5 rounded text-xs font-bold uppercase tracking-widest border border-white/10">Reglas</button>
+                                    <button onClick={() => setShowScoreboardOnTV(!showScoreboardOnTV)} className={`px-3 py-1.5 rounded text-xs font-bold uppercase tracking-widest border border-white/10 transition ${showScoreboardOnTV ? 'bg-green-600 text-white' : 'bg-black/40 text-slate-500'}`}>Tablero</button>
+                                    <button onClick={() => setShowStatsOnTV(!showStatsOnTV)} className={`px-3 py-1.5 rounded text-xs font-bold uppercase tracking-widest border border-white/10 transition ${showStatsOnTV ? 'bg-blue-600 text-white' : 'bg-black/40 text-slate-500'}`}>Stats TV</button>
+                                    <button onClick={() => setTvMode(true)} className="bg-vnl-accent hover:bg-cyan-400 text-black px-3 py-1.5 rounded text-xs font-bold uppercase tracking-widest shadow">Vista TV 📺</button>
+                                    <button onClick={handleEndBroadcast} className="bg-red-900/50 hover:bg-red-800 text-red-200 border border-red-500/30 px-3 py-1.5 rounded text-xs font-bold uppercase tracking-widest">Terminar</button>
+                                 </>
+                             )}
+                         </div>
+                     </div>
+                     
+                     {/* Game Area */}
+                     <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                        {/* Team A Control */}
+                        <div className="lg:col-span-3 space-y-4">
+                            <ScoreControl 
+                                role={currentUser.role}
+                                linkedTeamId={currentUser.linkedTeamId}
+                                onPoint={handlePoint}
+                                onSubtractPoint={handleSubtractPoint}
+                                onRequestTimeout={handleRequestTimeout}
+                                onRequestSub={initiateSubRequest}
+                                onModifyRotation={initiateRotationCheck}
+                                onSetServe={handleSetServe}
+                                teamId={activeTournament.fixtures?.find(f => f.id === liveMatch.matchId)?.teamAId!}
+                                teamName={activeTournament.teams.find(t => t.id === activeTournament.fixtures?.find(f => f.id === liveMatch.matchId)?.teamAId)?.name!}
+                                players={liveMatch.rotationA}
+                                disabled={liveMatch.status === 'finished'}
+                                timeoutsUsed={liveMatch.timeoutsA}
+                                subsUsed={liveMatch.substitutionsA}
+                                isServing={liveMatch.servingTeamId === activeTournament.fixtures?.find(f => f.id === liveMatch.matchId)?.teamAId}
+                            />
+                             {/* Bench A */}
+                             <div className="bg-black/20 p-3 rounded border border-white/5">
+                                 <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">Banca</h4>
+                                 <div className="flex flex-wrap gap-2">
+                                     {liveMatch.benchA.map(p => (
+                                         <span key={p.id} className="bg-white/5 text-slate-300 text-xs px-2 py-1 rounded font-bold">#{p.number}</span>
+                                     ))}
+                                 </div>
+                             </div>
+                        </div>
+                        
+                        {/* Court Center */}
+                        <div className="lg:col-span-6 flex flex-col gap-4">
+                            {/* Scoreboard Display */}
+                            <div className="bg-black/60 rounded-xl border border-white/10 p-4 flex justify-between items-center shadow-2xl relative overflow-hidden">
+                                <div className="text-4xl lg:text-6xl font-black text-white tabular-nums">{liveMatch.scoreA}</div>
+                                <div className="flex flex-col items-center z-10">
+                                    <div className="text-xs font-bold text-slate-500 uppercase tracking-widest">Set {liveMatch.currentSet}</div>
+                                    <div className="text-2xl font-black text-white italic">VS</div>
+                                    {liveMatch.status === 'finished_set' && (
+                                        <button onClick={handleStartNextSet} className="mt-2 bg-green-600 hover:bg-green-500 text-white px-4 py-1 rounded-full text-xs font-bold uppercase animate-pulse shadow-lg">
+                                            Siguiente Set
                                         </button>
                                     )}
-
-                                    {/* Start Button for Pending Sets */}
-                                    {isPending && liveMatch.currentSet === setNumber && liveMatch.status === 'warmup' && (
-                                        <button onClick={() => handleSetOperation('START', i)} className="text-[9px] bg-blue-600 hover:bg-blue-500 text-white px-2 py-1 rounded w-full uppercase font-bold">
-                                            Iniciar
+                                    {liveMatch.status === 'warmup' && isAdmin && (
+                                        <button onClick={handleStartGame} className="mt-2 bg-green-600 hover:bg-green-500 text-white px-4 py-1 rounded-full text-xs font-bold uppercase animate-pulse shadow-lg">
+                                            Iniciar Partido
                                         </button>
-                                    )}
-
-                                    {/* Correction Options */}
-                                    {(isFinished || (isCurrent && liveMatch.status === 'finished_set')) && (
-                                        <div className="flex gap-1 mt-1 w-full">
-                                            {/* Renamed "Corregir" to "Editar" and kept it as secondary action */}
-                                            {isFinished && (
-                                                <button onClick={() => handleSetOperation('REOPEN', i)} className="flex-1 text-[9px] bg-white/10 hover:bg-white/20 text-yellow-400 px-1 py-1 rounded uppercase font-bold">
-                                                    Editar
-                                                </button>
-                                            )}
-                                            {/* Button to view Set Stats */}
-                                            {setData && (
-                                                <button onClick={() => setViewingSetStats({setNum: setNumber, data: setData})} className="flex-1 text-[9px] bg-white/10 hover:bg-white/20 text-blue-400 px-1 py-1 rounded uppercase font-bold">
-                                                    Stats
-                                                </button>
-                                            )}
-                                        </div>
                                     )}
                                 </div>
-                            );
-                        })}
-                    </div>
-                </div>
-            )}
-
-            {/* REFEREE SPECIFIC VIEW */}
-            {currentUser?.role === 'REFEREE' ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-10 animate-in fade-in">
-                    <div className="col-span-1 md:col-span-2 text-center bg-black/40 p-4 rounded-xl border border-white/10 mb-4">
-                        <h2 className="text-2xl font-bold text-white mb-2">Verificación de Rotación</h2>
-                        <div className="text-5xl font-mono font-bold text-yellow-400">
-                             {liveMatch.scoreA} - {liveMatch.scoreB}
-                        </div>
-                    </div>
-
-                    <div className="space-y-4">
-                         <div className="flex items-center justify-center gap-3 mb-2">
-                             {teamA.logoUrl && (
-                                 <img src={teamA.logoUrl} className="w-10 h-10 object-contain bg-white rounded-full p-1" />
-                             )}
-                             <h3 className="text-2xl font-bold text-white text-center uppercase tracking-tighter">{teamA.name}</h3>
-                         </div>
-                         <Court players={liveMatch.rotationA || []} serving={liveMatch.servingTeamId === teamA.id} teamName={teamA.name} variant="referee" />
-                    </div>
-
-                    <div className="space-y-4">
-                         <div className="flex items-center justify-center gap-3 mb-2">
-                             {teamB.logoUrl && (
-                                 <img src={teamB.logoUrl} className="w-10 h-10 object-contain bg-white rounded-full p-1" />
-                             )}
-                             <h3 className="text-2xl font-bold text-white text-center uppercase tracking-tighter">{teamB.name}</h3>
-                         </div>
-                         <Court players={liveMatch.rotationB || []} serving={liveMatch.servingTeamId === teamB.id} teamName={teamB.name} variant="referee" />
-                    </div>
-                </div>
-            ) : (
-                /* STANDARD VIEW FOR ADMIN/COACH/VIEWER */
-                <>
-                    {/* ... (Set Finished Interstitial, Winner Banner, Scoreboard - kept same) ... */}
-                    {liveMatch.status === 'finished_set' && (
-                        <div className="mb-6 p-6 bg-gradient-to-r from-blue-900/90 to-purple-900/90 border border-white/20 rounded-xl text-center animate-in zoom-in shadow-2xl relative overflow-hidden">
-                            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-white/50 to-transparent"></div>
-                            <h3 className="text-3xl font-black text-white uppercase italic tracking-tighter mb-2">¡SET {liveMatch.currentSet} FINALIZADO!</h3>
-                            <div className="text-6xl font-mono font-bold text-yellow-400 drop-shadow-md mb-6">
-                                {liveMatch.scoreA} - {liveMatch.scoreB}
+                                <div className="text-4xl lg:text-6xl font-black text-white tabular-nums">{liveMatch.scoreB}</div>
                             </div>
-                            {(() => {
-                                const sets = liveMatch.sets || [];
-                                const winsA = sets.filter(s => s.scoreA > s.scoreB).length;
-                                const winsB = sets.filter(s => s.scoreB > s.scoreA).length;
-                                const isTieBreakNext = liveMatch.currentSet + 1 === liveMatch.config.maxSets;
-                                return (
-                                    <div className="flex flex-col items-center">
-                                        <p className="text-sm font-bold text-slate-300 uppercase tracking-widest mb-4">
-                                            Marcador Global: {winsA} - {winsB}
-                                            {isTieBreakNext && <span className="block text-red-400 animate-pulse mt-1">⚠️ Empate: Se requiere Set Decisivo</span>}
-                                        </p>
-                                        {currentUser?.role === 'ADMIN' && (
-                                            <div className="flex flex-col items-center gap-2">
-                                                <button 
-                                                    onClick={handleStartNextSet}
-                                                    className={`
-                                                        px-10 py-5 rounded-xl font-black text-2xl uppercase tracking-widest shadow-2xl transition transform hover:scale-105 border-b-4 
-                                                        ${isTieBreakNext 
-                                                            ? 'bg-red-600 hover:bg-red-500 text-white border-red-800 shadow-red-900/50' 
-                                                            : 'bg-green-600 hover:bg-green-500 text-white border-green-800 shadow-green-900/50'
-                                                        }
-                                                    `}
-                                                >
-                                                    {isTieBreakNext ? '🔥 INICIAR TIE-BREAK 🔥' : `Iniciar Set ${liveMatch.currentSet + 1}`}
-                                                </button>
-                                                {nextSetCountdown !== null && (
-                                                    <div className="text-xs text-slate-400 font-mono mt-2">
-                                                        Auto-inicio en {nextSetCountdown}s...
-                                                    </div>
-                                                )}
-                                            </div>
-                                        )}
-                                    </div>
-                                );
-                            })()}
+                            
+                            {/* Courts */}
+                            <div className="flex flex-col gap-1">
+                                <Court 
+                                    players={liveMatch.rotationA} 
+                                    serving={liveMatch.servingTeamId === activeTournament.fixtures?.find(f => f.id === liveMatch.matchId)?.teamAId}
+                                    teamName={activeTournament.teams.find(t => t.id === activeTournament.fixtures?.find(f => f.id === liveMatch.matchId)?.teamAId)?.name!}
+                                />
+                                <div className="h-1 bg-white/20 w-full rounded-full"></div>
+                                <Court 
+                                    players={liveMatch.rotationB} 
+                                    serving={liveMatch.servingTeamId === activeTournament.fixtures?.find(f => f.id === liveMatch.matchId)?.teamBId}
+                                    teamName={activeTournament.teams.find(t => t.id === activeTournament.fixtures?.find(f => f.id === liveMatch.matchId)?.teamBId)?.name!}
+                                />
+                            </div>
                         </div>
-                    )}
 
-                    {liveMatch.status === 'finished' && (
-                        <div className="mb-6 p-4 bg-yellow-500/20 border border-yellow-500/50 rounded-lg text-center animate-in zoom-in">
-                            <h3 className="text-2xl font-black text-yellow-400 uppercase italic">¡PARTIDO FINALIZADO!</h3>
-                            <p className="text-sm text-yellow-200 font-bold">Por favor, presiona "🏁 Confirmar y Salir" para guardar los resultados.</p>
-                        </div>
-                    )}
-
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                        <div className="col-span-1 md:col-span-3 bg-gradient-to-b from-slate-900 to-corp-panel rounded-2xl border border-white/5 p-8 text-white shadow-2xl flex justify-between items-center relative overflow-hidden">
-                             <div className={`text-center w-1/3 flex flex-col items-center z-10 ${isAdmin && liveMatch.status === 'playing' ? 'cursor-pointer hover:scale-105 transition' : ''}`} onClick={() => isAdmin && liveMatch.status === 'playing' && handlePoint(teamA.id, 'opponent_error')}>
-                                 {teamA.logoUrl && (
-                                     <img src={teamA.logoUrl} className="w-20 h-20 bg-white rounded-xl p-2 mb-2 object-contain shadow-lg" />
-                                 )}
-                                 <h2 className="text-2xl font-bold uppercase tracking-tight">{teamA.name}</h2>
-                                 <div className="flex gap-1 mt-2">
-                                     {liveMatch.sets?.map((s,i) => i < liveMatch.currentSet - 1 && (
-                                         <div key={i} className={`w-3 h-3 rounded-full border ${s.scoreA > s.scoreB ? 'bg-yellow-400 border-yellow-400' : 'bg-transparent border-slate-600'}`}></div>
-                                     ))}
-                                 </div>
-                             </div>
-                             <div className="text-center w-1/3 z-10">
-                                 <div className="text-7xl md:text-9xl font-bold tracking-tighter text-white drop-shadow-2xl">
-                                     {liveMatch.scoreA}-{liveMatch.scoreB}
-                                 </div>
-                             </div>
-                             <div className={`text-center w-1/3 flex flex-col items-center z-10 ${isAdmin && liveMatch.status === 'playing' ? 'cursor-pointer hover:scale-105 transition' : ''}`} onClick={() => isAdmin && liveMatch.status === 'playing' && handlePoint(teamB.id, 'opponent_error')}>
-                                 {teamB.logoUrl && (
-                                     <img src={teamB.logoUrl} className="w-20 h-20 bg-white rounded-xl p-2 mb-2 object-contain shadow-lg" />
-                                 )}
-                                 <h2 className="text-2xl font-bold uppercase tracking-tight">{teamB.name}</h2>
-                                 <div className="flex gap-1 mt-2">
-                                     {liveMatch.sets?.map((s,i) => i < liveMatch.currentSet - 1 && (
-                                         <div key={i} className={`w-3 h-3 rounded-full border ${s.scoreB > s.scoreA ? 'bg-yellow-400 border-yellow-400' : 'bg-transparent border-slate-600'}`}></div>
+                        {/* Team B Control */}
+                        <div className="lg:col-span-3 space-y-4">
+                            <ScoreControl 
+                                role={currentUser.role}
+                                linkedTeamId={currentUser.linkedTeamId}
+                                onPoint={handlePoint}
+                                onSubtractPoint={handleSubtractPoint}
+                                onRequestTimeout={handleRequestTimeout}
+                                onRequestSub={initiateSubRequest}
+                                onModifyRotation={initiateRotationCheck}
+                                onSetServe={handleSetServe}
+                                teamId={activeTournament.fixtures?.find(f => f.id === liveMatch.matchId)?.teamBId!}
+                                teamName={activeTournament.teams.find(t => t.id === activeTournament.fixtures?.find(f => f.id === liveMatch.matchId)?.teamBId)?.name!}
+                                players={liveMatch.rotationB}
+                                disabled={liveMatch.status === 'finished'}
+                                timeoutsUsed={liveMatch.timeoutsB}
+                                subsUsed={liveMatch.substitutionsB}
+                                isServing={liveMatch.servingTeamId === activeTournament.fixtures?.find(f => f.id === liveMatch.matchId)?.teamBId}
+                            />
+                             {/* Bench B */}
+                             <div className="bg-black/20 p-3 rounded border border-white/5">
+                                 <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">Banca</h4>
+                                 <div className="flex flex-wrap gap-2">
+                                     {liveMatch.benchB.map(p => (
+                                         <span key={p.id} className="bg-white/5 text-slate-300 text-xs px-2 py-1 rounded font-bold">#{p.number}</span>
                                      ))}
                                  </div>
                              </div>
                         </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                        <div className="space-y-4">
-                             <Court players={liveMatch.rotationA || []} serving={liveMatch.servingTeamId === teamA.id} teamName={teamA.name} />
-                             <ScoreControl 
-                                role={currentUser.role} 
-                                linkedTeamId={currentUser.linkedTeamId} 
-                                onPoint={handlePoint} 
-                                onSubtractPoint={handleSubtractPoint}
-                                onRequestTimeout={handleRequestTimeout} 
-                                onRequestSub={initiateSubRequest} 
-                                onModifyRotation={handleModifyRotation} 
-                                onSetServe={handleSetServe}
-                                isServing={liveMatch.servingTeamId === teamA.id}
-                                teamId={teamA.id} 
-                                teamName={teamA.name} 
-                                players={liveMatch.rotationA} 
-                                disabled={liveMatch.status !== 'playing'} 
-                                timeoutsUsed={liveMatch.timeoutsA} 
-                                subsUsed={liveMatch.substitutionsA} 
-                              />
-                        </div>
-                        <div className="space-y-4">
-                             <Court players={liveMatch.rotationB || []} serving={liveMatch.servingTeamId === teamB.id} teamName={teamB.name} />
-                             <ScoreControl 
-                                role={currentUser.role} 
-                                linkedTeamId={currentUser.linkedTeamId} 
-                                onPoint={handlePoint} 
-                                onSubtractPoint={handleSubtractPoint}
-                                onRequestTimeout={handleRequestTimeout} 
-                                onRequestSub={initiateSubRequest} 
-                                onModifyRotation={handleModifyRotation}
-                                onSetServe={handleSetServe}
-                                isServing={liveMatch.servingTeamId === teamB.id}
-                                teamId={teamB.id} 
-                                teamName={teamB.name} 
-                                players={liveMatch.rotationB} 
-                                disabled={liveMatch.status !== 'playing'} 
-                                timeoutsUsed={liveMatch.timeoutsB} 
-                                subsUsed={liveMatch.substitutionsB} 
-                              />
-                        </div>
-                    </div>
-                </>
-            )}
-        </div>
+                     </div>
+                </div>
+              )}
+          </div>
       )}
+      
+      {/* 4. TEAMS MANAGEMENT VIEW */}
+      {currentView === 'teams' && (
+          <div className="space-y-8 animate-in slide-in-from-right-4">
+               <div className="flex justify-between items-center border-b border-white/10 pb-4">
+                   <h2 className="text-3xl font-black text-white uppercase italic tracking-tighter">Gestión de <span className="text-vnl-accent">Equipos</span></h2>
+               </div>
+               
+               {/* New Team Form */}
+               {isAdmin && (
+                   <div className="bg-corp-panel p-6 border border-white/10 rounded-xl relative overflow-hidden">
+                       <h3 className="text-sm font-bold text-vnl-accent uppercase tracking-widest mb-4">Registrar Nuevo Equipo</h3>
+                       <form onSubmit={handleAddTeam} className="flex flex-col md:flex-row gap-4 items-end">
+                           <div className="flex-grow w-full">
+                               <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Nombre del Equipo</label>
+                               <input value={newTeamName} onChange={e => setNewTeamName(e.target.value)} className="w-full p-3 bg-black/40 border border-white/10 rounded text-sm text-white font-bold focus:border-vnl-accent outline-none" placeholder="Ej: Las Águilas" required />
+                           </div>
+                           <div className="w-full md:w-1/3">
+                               <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Entrenador</label>
+                               <input value={newTeamCoach} onChange={e => setNewTeamCoach(e.target.value)} className="w-full p-3 bg-black/40 border border-white/10 rounded text-sm text-white font-bold focus:border-vnl-accent outline-none" placeholder="Nombre del Coach" />
+                           </div>
+                           <div className="w-full md:w-auto shrink-0">
+                               <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Logo URL (Opcional)</label>
+                               <div className="flex gap-2">
+                                   <input type="file" accept="image/*" onChange={(e) => handleFileUpload(e, setNewTeamLogo)} className="hidden" id="teamLogoUpload" />
+                                   <label htmlFor="teamLogoUpload" className="bg-white/10 hover:bg-white/20 text-white px-4 py-3 rounded cursor-pointer border border-white/10 text-xs font-bold uppercase transition">Subir</label>
+                                   {newTeamLogo && <img src={newTeamLogo} className="w-10 h-10 object-contain bg-white rounded p-1" />}
+                               </div>
+                           </div>
+                           <button type="submit" className="w-full md:w-auto bg-vnl-accent hover:bg-cyan-400 text-black font-black px-8 py-3 rounded shadow-[0_0_15px_rgba(6,182,212,0.3)] transition uppercase text-xs tracking-widest">
+                               Agregar
+                           </button>
+                       </form>
+                   </div>
+               )}
 
-      {/* --- MODALS --- */}
-      {/* Set Stats Modal */}
-      {viewingSetStats && activeTournament && fixture && teamA && teamB && (() => {
-          return (
-            <SetStatsModal 
-                setNumber={viewingSetStats.setNum}
-                setData={viewingSetStats.data}
-                teamA={teamA}
-                teamB={teamB}
-                onClose={() => setViewingSetStats(null)}
-                onNextSet={() => {
-                    handleStartNextSet();
-                    setViewingSetStats(null); // Close modal when starting next set
-                }}
-                showNextButton={isAdmin && liveMatch.status === 'finished_set' && viewingSetStats.setNum === liveMatch.currentSet}
-            />
-          );
-      })()}
-
-      {showRotationModal && (
-          <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-[70] backdrop-blur-md">
-              <div className="bg-corp-panel p-6 border border-white/20 rounded-xl w-full max-w-sm shadow-2xl">
-                  <h3 className="text-xl font-bold text-white mb-6 uppercase italic text-center">Modificar Rotación</h3>
-                  <div className="grid grid-cols-3 gap-3 mb-6">
-                      {rotationInput.map((val, idx) => (
-                          <div key={idx} className="flex flex-col items-center">
-                              <label className="text-[10px] text-slate-500 font-bold mb-1">P{idx + 1}</label>
-                              <input 
-                                type="number" 
-                                value={val}
-                                onChange={(e) => {
-                                    const newRot = [...rotationInput];
-                                    newRot[idx] = e.target.value;
-                                    setRotationInput(newRot);
-                                }}
-                                className="w-full bg-black/40 border border-white/10 rounded p-2 text-white font-bold text-center outline-none focus:border-corp-accent"
-                              />
-                          </div>
-                      ))}
-                  </div>
-                  <div className="flex gap-3">
-                      <button onClick={() => setShowRotationModal(null)} className="flex-1 py-3 text-slate-400 hover:text-white font-bold uppercase text-xs">Cancelar</button>
-                      <button onClick={confirmRotation} className="flex-1 py-3 bg-corp-accent text-white rounded font-bold uppercase text-xs hover:bg-corp-accent-hover shadow-lg transition">Confirmar</button>
-                  </div>
-              </div>
+               {/* Teams List */}
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                   {registeredTeams.map(team => (
+                       <div key={team.id} className="bg-corp-panel border border-white/10 rounded-xl overflow-hidden group hover:border-vnl-accent/30 transition">
+                           <div className="p-4 bg-gradient-to-r from-blue-900/20 to-transparent flex justify-between items-center border-b border-white/5">
+                               <div className="flex items-center gap-3">
+                                   {team.logoUrl ? <img src={team.logoUrl} className="w-10 h-10 object-contain drop-shadow" /> : <div className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center font-bold">{team.name[0]}</div>}
+                                   <div>
+                                       <h3 className="font-black text-white text-lg uppercase italic tracking-tight">{team.name}</h3>
+                                       <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Coach: {team.coachName}</p>
+                                   </div>
+                               </div>
+                               {isAdmin && <button onClick={() => handleDeleteTeam(team.id)} className="text-red-500 hover:text-red-400 font-bold text-xs uppercase">Eliminar</button>}
+                           </div>
+                           
+                           {/* Players */}
+                           <div className="p-4 grid grid-cols-4 gap-2">
+                               {team.players.map(p => (
+                                   <div 
+                                     key={p.id} 
+                                     onClick={() => setEditingPlayer(p)}
+                                     className="bg-black/30 p-2 rounded border border-white/5 flex flex-col items-center cursor-pointer hover:bg-white/10 transition group/player"
+                                   >
+                                       <div className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-xs font-bold text-white mb-1 overflow-hidden">
+                                           {p.profile?.photoUrl ? <img src={p.profile.photoUrl} className="w-full h-full object-cover" /> : `#${p.number}`}
+                                       </div>
+                                       <span className="text-[9px] font-bold text-slate-400 uppercase truncate w-full text-center group-hover/player:text-white">{p.name.split(' ')[0]}</span>
+                                   </div>
+                               ))}
+                           </div>
+                       </div>
+                   ))}
+               </div>
           </div>
       )}
 
-      {showMatchConfigModal && (
-          <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-[70] backdrop-blur-md">
-              <div className="bg-corp-panel p-6 border border-white/20 rounded-xl w-full max-w-sm shadow-2xl">
-                  {/* ... match config modal content ... */}
-                  <h3 className="text-xl font-bold text-white mb-6 uppercase italic text-center">
-                      {isEditingRules ? 'Modificar Reglas' : 'Configurar Partido'}
-                  </h3>
-                  
-                  <div className="space-y-6 mb-8">
-                      <div>
-                          <label className="block text-xs font-bold text-slate-400 uppercase mb-2">Cantidad de Sets</label>
-                          <div className="flex gap-2 mb-2">
-                              <input 
-                                type="number" 
-                                value={matchConfig.maxSets}
-                                onChange={(e) => setMatchConfig({...matchConfig, maxSets: parseInt(e.target.value) || 0})}
-                                className="w-full bg-black/40 border border-white/10 rounded p-2 text-white font-bold text-center outline-none focus:border-corp-accent"
-                              />
-                          </div>
-                          <div className="grid grid-cols-3 gap-2">
-                              {[1, 3, 5].map(sets => (
-                                  <button 
-                                    key={sets} 
-                                    onClick={() => setMatchConfig({...matchConfig, maxSets: sets})}
-                                    className={`py-1 rounded text-xs font-bold transition ${matchConfig.maxSets === sets ? 'bg-corp-accent text-white' : 'bg-black/30 text-slate-500 hover:text-white'}`}
-                                  >
-                                      {sets}
-                                  </button>
-                              ))}
-                          </div>
-                      </div>
+      {/* 5. USERS VIEW */}
+      {currentView === 'users' && (
+          <UserManagement 
+            users={users} 
+            teams={registeredTeams}
+            currentUser={currentUser}
+            onAddUser={handleAddUser}
+            onDeleteUser={handleDeleteUser}
+            onUpdateUser={handleUpdateUser}
+            onSystemReset={isAdmin ? handleSystemReset : undefined}
+          />
+      )}
 
-                      <div>
-                          <label className="block text-xs font-bold text-slate-400 uppercase mb-2">Puntos por Set</label>
-                          <div className="flex gap-2 mb-2">
-                              <input 
-                                type="number" 
-                                value={matchConfig.pointsPerSet}
-                                onChange={(e) => setMatchConfig({...matchConfig, pointsPerSet: parseInt(e.target.value) || 0})}
-                                className="w-full bg-black/40 border border-white/10 rounded p-2 text-white font-bold text-center outline-none focus:border-corp-accent"
-                              />
-                          </div>
-                          <div className="grid grid-cols-3 gap-2">
-                              {[15, 21, 25].map(pts => (
-                                  <button 
-                                    key={pts} 
-                                    onClick={() => setMatchConfig({...matchConfig, pointsPerSet: pts})}
-                                    className={`py-1 rounded text-xs font-bold transition ${matchConfig.pointsPerSet === pts ? 'bg-corp-accent text-white' : 'bg-black/30 text-slate-500 hover:text-white'}`}
-                                  >
-                                      {pts}
-                                  </button>
-                              ))}
-                          </div>
-                      </div>
+      {/* 6. STANDINGS VIEW */}
+      {currentView === 'standings' && activeTournament && (
+         <div className="space-y-6">
+             <div className="flex items-center gap-4 border-b border-white/10 pb-4">
+                 <button onClick={() => setCurrentView('dashboard')} className="text-slate-500 hover:text-white transition">← Volver</button>
+                 <h2 className="text-3xl font-black text-white uppercase italic tracking-tighter">Tabla de <span className="text-vnl-accent">Posiciones</span></h2>
+             </div>
+             <StandingsTable tournament={activeTournament} />
+         </div>
+      )}
 
-                      <div>
-                          <label className="block text-xs font-bold text-slate-400 uppercase mb-2">Tie-Break (Último Set)</label>
-                          <div className="flex gap-2 mb-2">
-                              <input 
-                                type="number" 
-                                value={matchConfig.tieBreakPoints}
-                                onChange={(e) => setMatchConfig({...matchConfig, tieBreakPoints: parseInt(e.target.value) || 0})}
-                                className="w-full bg-black/40 border border-white/10 rounded p-2 text-white font-bold text-center outline-none focus:border-corp-accent"
-                              />
-                          </div>
-                          <div className="grid grid-cols-2 gap-2">
-                              {[15, 25].map(pts => (
-                                  <button 
-                                    key={pts} 
-                                    onClick={() => setMatchConfig({...matchConfig, tieBreakPoints: pts})}
-                                    className={`py-1 rounded text-xs font-bold transition ${matchConfig.tieBreakPoints === pts ? 'bg-corp-accent text-white' : 'bg-black/30 text-slate-500 hover:text-white'}`}
-                                  >
-                                      {pts}
-                                  </button>
-                              ))}
-                          </div>
-                      </div>
-                  </div>
-
-                  <div className="flex gap-3">
-                      <button onClick={() => { setShowMatchConfigModal(null); setIsEditingRules(false); }} className="flex-1 py-3 text-slate-400 hover:text-white font-bold uppercase text-xs">Cancelar</button>
-                      <button onClick={handleSaveConfig} className="flex-1 py-3 bg-green-600 text-white rounded font-bold uppercase text-xs hover:bg-green-500 shadow-lg transition">
-                          {isEditingRules ? 'Guardar Cambios' : 'Comenzar'}
-                      </button>
-                  </div>
-              </div>
+      {/* 7. STATS VIEW */}
+      {currentView === 'stats' && activeTournament && (
+          <div className="space-y-6">
+             <div className="flex items-center gap-4 border-b border-white/10 pb-4">
+                 <button onClick={() => setCurrentView('dashboard')} className="text-slate-500 hover:text-white transition">← Volver</button>
+                 <h2 className="text-3xl font-black text-white uppercase italic tracking-tighter">Top <span className="text-vnl-accent">Players</span></h2>
+             </div>
+             <TopPlayers tournament={activeTournament} />
           </div>
       )}
 
+      {/* MODALS */}
+      
+      {/* Set Stats Modal (Auto or Manual) */}
+      {viewingSetStats && activeTournament && (
+          <SetStatsModal 
+              setNumber={viewingSetStats.setNum}
+              setData={viewingSetStats.data}
+              teamA={activeTournament.teams.find(t => t.id === activeTournament?.fixtures?.find(f => f.id === liveMatch?.matchId)?.teamAId)!}
+              teamB={activeTournament.teams.find(t => t.id === activeTournament?.fixtures?.find(f => f.id === liveMatch?.matchId)?.teamBId)!}
+              onClose={() => setViewingSetStats(null)}
+              onNextSet={() => { handleStartNextSet(); setViewingSetStats(null); }}
+              showNextButton={isAdmin && liveMatch?.status === 'finished_set'}
+          />
+      )}
+      
+      {/* Create Tournament Modal */}
       {showCreateTourneyModal && (
-          <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-[60] backdrop-blur-md p-4">
-              <div className="bg-corp-panel border border-white/20 rounded-2xl shadow-2xl w-full max-w-lg flex flex-col max-h-[90vh]">
-                  {/* ... create tourney modal content ... */}
-                  <div className="p-6 border-b border-white/10">
-                      <h2 className="text-2xl font-bold text-white">Nuevo Torneo</h2>
-                      <p className="text-xs text-slate-400">Configura la competencia y genera el fixture con IA.</p>
-                  </div>
-                  
-                  <div className="p-6 space-y-6 overflow-y-auto">
-                      <div className="flex gap-4">
-                          <div className="w-24 h-24 bg-black/30 rounded-lg flex-shrink-0 flex items-center justify-center border border-white/10 overflow-hidden relative group">
-                              {newTourneyData.logoUrl ? <img src={newTourneyData.logoUrl} className="w-full h-full object-contain" /> : <span className="text-2xl">🏆</span>}
-                              <input type="file" accept="image/*" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20" onChange={(e) => handleFileUpload(e, (val) => setNewTourneyData({...newTourneyData, logoUrl: val}))} />
-                              <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition text-[10px] font-bold text-white uppercase z-10 pointer-events-none">Cambiar</div>
-                          </div>
-                          <div className="flex-1">
-                              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Nombre del Torneo</label>
-                              <input 
-                                  type="text" 
-                                  value={newTourneyData.name} 
-                                  onChange={(e) => setNewTourneyData({...newTourneyData, name: e.target.value})} 
-                                  className="w-full bg-black/40 border border-white/10 rounded p-2 text-white font-bold text-xs outline-none focus:border-corp-accent" 
-                                  placeholder="Ej: Torneo Verano 2024"
-                              />
-                          </div>
+          <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4 backdrop-blur-md">
+              <div className="bg-vnl-panel border border-white/20 p-6 w-full max-w-lg shadow-[0_0_50px_rgba(6,182,212,0.2)]">
+                  <h3 className="text-xl font-black text-white uppercase italic tracking-tighter mb-6 border-b border-white/10 pb-2">Nuevo Torneo</h3>
+                  <div className="space-y-4">
+                      <div>
+                          <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Nombre</label>
+                          <input value={newTourneyData.name} onChange={e => setNewTourneyData({...newTourneyData, name: e.target.value})} className="w-full p-3 bg-black/40 border border-white/10 text-white font-bold focus:border-vnl-accent outline-none" placeholder="Ej: Copa Verano 2024" />
                       </div>
-
-                      {/* Date Range */}
                       <div className="grid grid-cols-2 gap-4">
                           <div>
                               <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Inicio</label>
-                              <input 
-                                type="date" 
-                                value={newTourneyData.startDate} 
-                                onChange={(e) => setNewTourneyData({...newTourneyData, startDate: e.target.value})} 
-                                className="w-full bg-black/40 border border-white/10 rounded p-2 text-white font-bold text-xs outline-none focus:border-corp-accent"
-                              />
+                              <input type="date" value={newTourneyData.startDate} onChange={e => setNewTourneyData({...newTourneyData, startDate: e.target.value})} className="w-full p-3 bg-black/40 border border-white/10 text-white font-bold focus:border-vnl-accent outline-none" />
                           </div>
                           <div>
                               <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Fin</label>
-                              <input 
-                                type="date" 
-                                value={newTourneyData.endDate} 
-                                onChange={(e) => setNewTourneyData({...newTourneyData, endDate: e.target.value})} 
-                                className="w-full bg-black/40 border border-white/10 rounded p-2 text-white font-bold text-xs outline-none focus:border-corp-accent"
-                              />
+                              <input type="date" value={newTourneyData.endDate} onChange={e => setNewTourneyData({...newTourneyData, endDate: e.target.value})} className="w-full p-3 bg-black/40 border border-white/10 text-white font-bold focus:border-vnl-accent outline-none" />
                           </div>
                       </div>
-
-                      {/* Match Days */}
                       <div>
-                          <label className="block text-[10px] font-bold text-slate-500 uppercase mb-2">Días de Partido</label>
+                          <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Días de Partido (IA)</label>
                           <div className="flex flex-wrap gap-2">
                               {DAYS_OF_WEEK.map(day => (
                                   <button 
                                     key={day} 
                                     onClick={() => toggleDaySelection(day)}
-                                    className={`px-3 py-1.5 rounded text-[10px] font-bold uppercase transition border ${newTourneyData.matchDays.includes(day) ? 'bg-corp-accent text-white border-corp-accent' : 'bg-black/40 text-slate-500 border-white/10 hover:border-white/30'}`}
+                                    className={`px-3 py-1 rounded text-[10px] font-bold uppercase transition border ${newTourneyData.matchDays.includes(day) ? 'bg-vnl-accent text-black border-vnl-accent' : 'bg-black/40 text-slate-500 border-white/10 hover:border-white'}`}
                                   >
-                                      {day}
+                                      {day.substring(0,3)}
                                   </button>
                               ))}
                           </div>
-                          <p className="text-[9px] text-slate-500 mt-2">* La IA priorizará estos días para el fixture.</p>
                       </div>
-                  </div>
-
-                  <div className="p-6 border-t border-white/10 bg-black/20 flex justify-end gap-3">
-                      <button onClick={() => setShowCreateTourneyModal(false)} className="px-4 py-2 text-slate-400 hover:text-white font-bold uppercase text-xs">Cancelar</button>
-                      <button 
-                        onClick={handleCreateTournament} 
-                        disabled={loading}
-                        className="px-6 py-2 bg-corp-accent text-white rounded font-bold uppercase text-xs hover:bg-corp-accent-hover shadow-lg transition disabled:opacity-50 disabled:grayscale flex items-center gap-2"
-                      >
-                          {loading ? <span className="animate-spin">⏳</span> : '✨'} {loading ? 'Generando...' : 'Crear Torneo'}
+                      <button onClick={handleCreateTournament} disabled={loading} className="w-full bg-vnl-accent hover:bg-cyan-400 text-black font-black py-4 uppercase tracking-widest text-sm shadow-lg transition mt-4 flex items-center justify-center gap-2">
+                          {loading ? 'Generando Fixture...' : 'Crear & Generar Fixture'}
                       </button>
+                      <button onClick={() => setShowCreateTourneyModal(false)} className="w-full text-slate-500 text-xs font-bold uppercase tracking-widest hover:text-white transition">Cancelar</button>
                   </div>
               </div>
           </div>
       )}
 
+      {/* Match Config Modal (Pre-Match or Edit Rules) */}
+      {showMatchConfigModal && activeTournament && (
+          <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4 backdrop-blur-md">
+              <div className="bg-vnl-panel border border-white/20 p-6 w-full max-w-md shadow-2xl">
+                  <h3 className="text-xl font-black text-white uppercase italic tracking-tighter mb-4">{isEditingRules ? 'Editar Reglas' : 'Configurar Partido'}</h3>
+                  <div className="space-y-4">
+                      <div>
+                          <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Sets Máximos</label>
+                          <div className="flex gap-2 bg-black/40 p-1 rounded border border-white/10">
+                              {[1, 3, 5].map(n => (
+                                  <button key={n} onClick={() => setMatchConfig({...matchConfig, maxSets: n})} className={`flex-1 py-2 text-xs font-bold uppercase rounded transition ${matchConfig.maxSets === n ? 'bg-vnl-accent text-black shadow' : 'text-slate-400 hover:text-white'}`}>{n} Sets</button>
+                              ))}
+                          </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                          <div>
+                              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Puntos por Set</label>
+                              <input type="number" value={matchConfig.pointsPerSet} onChange={e => setMatchConfig({...matchConfig, pointsPerSet: parseInt(e.target.value)})} className="w-full p-2 bg-black/40 border border-white/10 text-white font-bold text-center" />
+                          </div>
+                          <div>
+                              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Tie Break</label>
+                              <input type="number" value={matchConfig.tieBreakPoints} onChange={e => setMatchConfig({...matchConfig, tieBreakPoints: parseInt(e.target.value)})} className="w-full p-2 bg-black/40 border border-white/10 text-white font-bold text-center" />
+                          </div>
+                      </div>
+                      <button onClick={handleSaveConfig} className="w-full bg-green-600 hover:bg-green-500 text-white font-black py-3 uppercase tracking-widest text-sm shadow-lg transition mt-2">
+                          {isEditingRules ? 'Guardar Cambios' : 'CONFIRMAR INICIO'}
+                      </button>
+                      <button onClick={() => setShowMatchConfigModal(null)} className="w-full text-slate-500 text-xs font-bold uppercase tracking-widest hover:text-white transition">Cancelar</button>
+                  </div>
+              </div>
+          </div>
+      )}
+
+      {/* Substitution Modal */}
+      {showSubModal && liveMatch && activeTournament && (
+          <div className="fixed inset-0 bg-black/80 z-[60] flex items-center justify-center p-4 backdrop-blur-sm">
+              <div className="bg-vnl-panel border border-white/20 p-6 w-full max-w-sm shadow-2xl">
+                  <h3 className="text-lg font-black text-white uppercase italic tracking-tighter mb-4 text-center">Realizar Cambio</h3>
+                  <div className="flex items-center justify-center gap-4 mb-6">
+                       <div className="text-center">
+                           <label className="block text-[9px] font-bold text-slate-500 uppercase mb-1">Sale (#)</label>
+                           <input 
+                             type="number" 
+                             value={subPlayerOutNum} 
+                             onChange={e => setSubPlayerOutNum(e.target.value)} 
+                             className="w-16 h-16 bg-red-900/20 border border-red-500/50 text-white font-black text-2xl text-center rounded focus:outline-none focus:border-red-500"
+                             placeholder="OUT"
+                           />
+                       </div>
+                       <span className="text-2xl text-slate-500">→</span>
+                       <div className="text-center">
+                           <label className="block text-[9px] font-bold text-slate-500 uppercase mb-1">Entra (#)</label>
+                           <input 
+                             type="number" 
+                             value={subPlayerInNum} 
+                             onChange={e => setSubPlayerInNum(e.target.value)} 
+                             className="w-16 h-16 bg-green-900/20 border border-green-500/50 text-white font-black text-2xl text-center rounded focus:outline-none focus:border-green-500"
+                             placeholder="IN"
+                           />
+                       </div>
+                  </div>
+                  <div className="flex gap-2">
+                      <button onClick={() => setShowSubModal(null)} className="flex-1 bg-white/10 hover:bg-white/20 text-white py-3 rounded text-xs font-bold uppercase">Cancelar</button>
+                      <button onClick={handleConfirmSub} className="flex-1 bg-vnl-accent hover:bg-cyan-400 text-black py-3 rounded text-xs font-black uppercase shadow-[0_0_15px_rgba(6,182,212,0.3)]">Confirmar</button>
+                  </div>
+              </div>
+          </div>
+      )}
+      
+      {/* Rotation Editor Modal */}
+      {showRotationModal && liveMatch && (
+          <div className="fixed inset-0 bg-black/80 z-[60] flex items-center justify-center p-4 backdrop-blur-sm">
+              <div className="bg-vnl-panel border border-white/20 p-6 w-full max-w-md shadow-2xl">
+                   <h3 className="text-lg font-black text-white uppercase italic tracking-tighter mb-4 text-center">Editar Rotación (P1 - P6)</h3>
+                   <div className="grid grid-cols-3 gap-2 mb-6">
+                       {[0, 1, 2, 3, 4, 5].map(i => (
+                           <div key={i} className="text-center">
+                               <label className="block text-[9px] font-bold text-slate-500 uppercase mb-1">Pos {i+1}</label>
+                               <input 
+                                 type="number"
+                                 value={rotationInput[i] || ''}
+                                 onChange={e => {
+                                     const newRot = [...rotationInput];
+                                     newRot[i] = e.target.value;
+                                     setRotationInput(newRot);
+                                 }}
+                                 className="w-full p-2 bg-black/40 border border-white/10 text-white font-bold text-center focus:border-vnl-accent outline-none"
+                               />
+                           </div>
+                       ))}
+                   </div>
+                   <div className="flex gap-2">
+                      <button onClick={() => setShowRotationModal(null)} className="flex-1 bg-white/10 hover:bg-white/20 text-white py-3 rounded text-xs font-bold uppercase">Cancelar</button>
+                      <button onClick={handleUpdateRotation} className="flex-1 bg-vnl-accent hover:bg-cyan-400 text-black py-3 rounded text-xs font-black uppercase shadow-[0_0_15px_rgba(6,182,212,0.3)]">Actualizar</button>
+                   </div>
+              </div>
+          </div>
+      )}
+
+      {/* Player Profile Editor */}
+      {editingPlayer && currentUser && (
+          <ProfileEditor 
+            player={editingPlayer} 
+            currentUser={currentUser}
+            onClose={() => setEditingPlayer(null)}
+            onSave={(updated) => {
+                // Determine which team this player belongs to
+                // We must update registeredTeams state
+                const newTeams = registeredTeams.map(t => {
+                    const pIndex = t.players.findIndex(p => p.id === updated.id);
+                    if (pIndex !== -1) {
+                        const newPlayers = [...t.players];
+                        newPlayers[pIndex] = updated;
+                        return { ...t, players: newPlayers };
+                    }
+                    return t;
+                });
+                updateTeams(newTeams);
+                setEditingPlayer(null);
+            }}
+          />
+      )}
+
     </Layout>
   );
 };
+
+export default App;

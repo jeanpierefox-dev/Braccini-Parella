@@ -1,6 +1,6 @@
 
-import { GoogleGenAI, Type, Schema } from "@google/genai";
-import { Team, MatchFixture, Player } from "../types";
+import { GoogleGenAI, Type } from "@google/genai";
+import { Team } from "../types";
 
 // Safely retrieve API Key without crashing if process is not defined in browser
 const getApiKey = () => {

@@ -12,7 +12,6 @@ interface TVOverlayProps {
   onLogout?: () => void;
   onNextSet?: () => void; // New prop
   nextSetCountdown?: number | null; // New prop
-  tournamentStats?: any[];
   showStatsOverlay?: boolean;
   showScoreboard?: boolean;
   isCloudConnected?: boolean;
@@ -28,7 +27,6 @@ export const TVOverlay: React.FC<TVOverlayProps> = ({
   onLogout,
   onNextSet,
   nextSetCountdown,
-  tournamentStats,
   showStatsOverlay = false,
   showScoreboard = true,
   isCloudConnected = true
