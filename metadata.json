@@ -1,0 +1,7 @@
+{
+  "name": "JSport Braccini 2.1",
+  "description": "Sistema profesional de gestión de torneos de voley, puntuación en vivo, rotaciones y estadísticas con asistencia de IA.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
