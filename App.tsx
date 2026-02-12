@@ -1088,6 +1088,7 @@ export const App: React.FC = () => {
                     currentUser={currentUser}
                     onExit={() => setTvMode(false)}
                     onLogout={currentUser.role === 'VIEWER' ? () => { setCurrentUser(null); setLiveMatch(null); setCurrentView('home'); } : undefined}
+                    onBack={currentUser.role === 'VIEWER' ? () => { setCurrentView('dashboard'); setTvMode(false); } : undefined}
                     onNextSet={handleStartNextSet}
                     nextSetCountdown={nextSetCountdown}
                     showStatsOverlay={showStatsOnTV}

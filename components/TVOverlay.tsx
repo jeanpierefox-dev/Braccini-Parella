@@ -10,8 +10,9 @@ interface TVOverlayProps {
   currentUser?: User | null;
   onExit: () => void;
   onLogout?: () => void;
-  onNextSet?: () => void; // New prop
-  nextSetCountdown?: number | null; // New prop
+  onBack?: () => void; // New prop for Viewers to go back to Dashboard
+  onNextSet?: () => void;
+  nextSetCountdown?: number | null;
   showStatsOverlay?: boolean;
   showScoreboard?: boolean;
   isCloudConnected?: boolean;
@@ -25,6 +26,7 @@ export const TVOverlay: React.FC<TVOverlayProps> = ({
   currentUser,
   onExit, 
   onLogout,
+  onBack,
   onNextSet,
   nextSetCountdown,
   showStatsOverlay = false,
@@ -134,9 +136,7 @@ export const TVOverlay: React.FC<TVOverlayProps> = ({
             video: selectedDeviceId ? { deviceId: { exact: selectedDeviceId } } : { facingMode: 'environment' }
         };
 
-        // Try high res if possible, but only if no specific device is selected (let system decide)
-        // or if we are sure device supports it. For stability, we can try without ideal first if preferred,
-        // but high res is better for TV.
+        // Try high res if possible
         if (!selectedDeviceId) {
              // @ts-ignore
              constraints.video.width = { ideal: 1920 };
@@ -151,35 +151,25 @@ export const TVOverlay: React.FC<TVOverlayProps> = ({
             activeStream = stream;
             if (videoRef.current) {
                 videoRef.current.srcObject = activeStream;
-                // Attempt to play to ensure it starts (sometimes required on mobile)
                 await videoRef.current.play().catch(e => console.warn("Autoplay blocked", e));
             }
         } else {
-            // Unmounted during load
             stream.getTracks().forEach(track => track.stop());
         }
 
       } catch (err) {
         console.warn("High-spec camera failed, trying fallback...", err);
         
-        // Fallback: minimal constraints
         try {
             if (!isMounted) return;
-            
-            // Ensure no lingering locks
             if (activeStream) {
                 activeStream.getTracks().forEach(track => track.stop());
                 activeStream = null;
             }
-
-            // Introduce a larger delay to ensure previous hardware lock is released by OS
             await new Promise(resolve => setTimeout(resolve, 800));
-            
-            // Explicit low-res fallback which is often safer than "any"
             const stream = await navigator.mediaDevices.getUserMedia({ 
                 video: { width: 640, height: 480 } 
             });
-            
             if (isMounted) {
                 activeStream = stream;
                 if (videoRef.current) {
@@ -193,14 +183,6 @@ export const TVOverlay: React.FC<TVOverlayProps> = ({
             console.error("Critical Camera Error:", err2);
             if (isMounted) {
                 let msg = "No se pudo iniciar la cámara.";
-                const errName = err2.name || '';
-                const errMsg = err2.message || '';
-                
-                if (errName === 'NotAllowedError' || errName === 'PermissionDeniedError') msg = "Permiso denegado.";
-                else if (errName === 'NotFoundError' || errName === 'DevicesNotFoundError') msg = "No se encontró cámara.";
-                else if (errName === 'NotReadableError' || errMsg.includes('Could not start video source')) msg = "Cámara ocupada por otra app.";
-                else if (errName === 'OverconstrainedError') msg = "Error de resolución.";
-                
                 setCameraError(msg);
             }
         }
@@ -268,10 +250,9 @@ export const TVOverlay: React.FC<TVOverlayProps> = ({
   const canUseTikTok = currentUser?.role === 'ADMIN';
 
   return (
-    // Changed bg-black to bg-black/0 (transparent) and ensures z-index stacking is correct
     <div className="fixed inset-0 z-[100] flex flex-col justify-end pb-0 font-sans bg-transparent overflow-hidden transition-all duration-300">
       
-      {/* Background: Camera for Admin (if no error), Gradient for Viewer or Error Fallback */}
+      {/* Background */}
       {!isViewer && !cameraError ? (
         <video 
             ref={videoRef}
@@ -283,11 +264,9 @@ export const TVOverlay: React.FC<TVOverlayProps> = ({
         />
       ) : (
         <div className="absolute inset-0 bg-corp-bg w-full h-full" style={{ zIndex: -1 }}>
-            {/* Animated Background */}
             <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-blue-900/40 via-corp-bg to-black"></div>
             <div className="absolute top-0 left-0 w-full h-full opacity-20" style={{ backgroundImage: 'radial-gradient(#ffffff 1px, transparent 1px)', backgroundSize: '30px 30px' }}></div>
             
-            {/* Admin Camera Error Message - Non-blocking now */}
             {!isViewer && cameraError && (
                 <div className="absolute top-20 right-6 flex items-center gap-2 bg-red-900/50 text-red-200 px-3 py-1 rounded-full border border-red-500/30 backdrop-blur-sm pointer-events-none">
                     <span className="text-xs">📷 {cameraError} (Modo Gráfico)</span>
@@ -310,55 +289,74 @@ export const TVOverlay: React.FC<TVOverlayProps> = ({
       </div>
 
 
-      {/* --- HEADER ELEMENTS (TOP LEFT) --- */}
-      <div className="absolute top-6 left-6 landscape:top-3 landscape:left-4 landscape:scale-90 flex flex-col gap-2 z-50 items-start transition-all">
-          {/* Exit / Logout Button */}
-          {isViewer && onLogout ? (
-              <button 
-                onClick={onLogout}
-                className="bg-red-600/80 hover:bg-red-600 text-white px-4 py-2 rounded-full text-xs font-bold transition backdrop-blur-md border border-white/20 uppercase tracking-widest hover:border-white mb-2 shadow-lg"
-              >
-                ← Cerrar Sesión
-              </button>
-          ) : (
-              <div className="flex flex-col gap-2">
-                  <div className="flex gap-2">
+      {/* --- HEADER ELEMENTS (TOP LEFT) - NAV BAR --- */}
+      <div className="absolute top-4 left-4 md:top-6 md:left-6 landscape:top-3 landscape:left-4 landscape:scale-90 flex flex-col gap-3 z-50 items-start transition-all">
+          
+          {/* NAVIGATION BUTTONS */}
+          <div className="flex flex-col gap-2">
+              {isViewer ? (
+                  <>
+                    {/* Viewer: Back to Dashboard */}
+                    {onBack && (
+                        <button 
+                            onClick={onBack}
+                            className="bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-lg text-xs font-black transition backdrop-blur-md border border-white/20 uppercase tracking-widest flex items-center gap-2 shadow-lg group"
+                        >
+                            <span>←</span> Volver al Fixture
+                        </button>
+                    )}
+                    {/* Viewer: Logout */}
+                    {onLogout && (
+                        <button 
+                            onClick={onLogout}
+                            className="bg-red-600/80 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-xs font-bold transition backdrop-blur-md border border-white/20 uppercase tracking-widest shadow-lg"
+                        >
+                            Cerrar Sesión
+                        </button>
+                    )}
+                  </>
+              ) : (
+                  // Admin: Back to Controls
+                  <div className="flex items-center gap-2">
                     <button 
                         onClick={onExit}
-                        className="bg-black/60 hover:bg-black/90 text-white px-3 py-1 rounded-full text-xs font-bold transition backdrop-blur-md border border-white/20 uppercase tracking-widest hover:border-white"
+                        className="bg-corp-accent hover:bg-corp-accent-hover text-white px-5 py-3 rounded-lg text-xs font-black transition backdrop-blur-md border border-white/20 uppercase tracking-widest shadow-[0_0_15px_rgba(59,130,246,0.5)] flex items-center gap-2 transform hover:scale-105 active:scale-95"
                     >
-                        ✕ Salir
+                        <span>🎛️</span> Panel de Control
                     </button>
+                    
                     {/* Camera Settings Toggle */}
                     <button 
                         onClick={() => setShowSettings(!showSettings)}
-                        className={`px-2 py-1 rounded-full text-xs font-bold transition backdrop-blur-md border border-white/20 ${cameraError ? 'bg-red-600/80 text-white hover:bg-red-500' : 'bg-black/60 hover:bg-white text-white hover:text-black'}`}
+                        className={`px-3 py-3 rounded-lg text-xs font-bold transition backdrop-blur-md border border-white/20 shadow-lg ${cameraError ? 'bg-red-600/80 text-white hover:bg-red-500' : 'bg-black/60 hover:bg-white text-white hover:text-black'}`}
                         title="Configuración de Cámara"
                     >
                         📷
                     </button>
                   </div>
-                  
-                  {/* Camera Selector Dropdown */}
-                  {showSettings && (
-                      <div className="bg-black/80 backdrop-blur-md p-2 rounded border border-white/20 mt-1 max-w-[200px]">
-                          <label className="block text-[9px] font-bold text-slate-400 uppercase mb-1">Cámara</label>
-                          <select 
-                             value={selectedDeviceId}
-                             onChange={(e) => { setSelectedDeviceId(e.target.value); setCameraError(null); }}
-                             className="w-full bg-white/10 text-white text-[10px] p-1 rounded outline-none"
-                          >
-                              {videoDevices.length === 0 && <option value="">Detectando...</option>}
-                              {videoDevices.map(device => (
-                                  <option key={device.deviceId} value={device.deviceId}>
-                                      {device.label || `Camera ${device.deviceId.slice(0, 5)}...`}
-                                  </option>
-                              ))}
-                          </select>
-                      </div>
-                  )}
-              </div>
-          )}
+              )}
+              
+              {/* Camera Selector Dropdown */}
+              {showSettings && !isViewer && (
+                  <div className="bg-black/90 backdrop-blur-xl p-3 rounded-lg border border-white/20 mt-1 max-w-[240px] shadow-2xl animate-in slide-in-from-top-2">
+                      <label className="block text-[9px] font-black text-slate-400 uppercase mb-2 tracking-widest">Seleccionar Cámara</label>
+                      <select 
+                         value={selectedDeviceId}
+                         onChange={(e) => { setSelectedDeviceId(e.target.value); setCameraError(null); }}
+                         className="w-full bg-white/10 text-white text-[10px] p-2 rounded outline-none border border-white/10 focus:border-corp-accent"
+                      >
+                          {videoDevices.length === 0 && <option value="">Detectando...</option>}
+                          {videoDevices.map(device => (
+                              <option key={device.deviceId} value={device.deviceId}>
+                                  {device.label || `Cámara ${device.deviceId.slice(0, 5)}...`}
+                              </option>
+                          ))}
+                      </select>
+                  </div>
+              )}
+          </div>
+
+          {/* STATUS BADGES */}
           {!matchEnded && (
               <div className="hidden md:flex gap-2"> 
                   {!isPreMatch && (
@@ -367,7 +365,7 @@ export const TVOverlay: React.FC<TVOverlayProps> = ({
                    </div>
                   )}
                   {!isCloudConnected && (
-                      <div className="bg-yellow-500 text-black px-3 py-1 rounded font-bold text-xs uppercase animate-bounce">
+                      <div className="bg-yellow-500 text-black px-3 py-1 rounded font-bold text-xs uppercase animate-bounce shadow-lg">
                           ⚠️ Sin Conexión
                       </div>
                   )}
@@ -386,7 +384,7 @@ export const TVOverlay: React.FC<TVOverlayProps> = ({
 
       {/* --- TOURNAMENT LOGO (TOP RIGHT) --- */}
       {tournament?.logoUrl && (
-          <div className="absolute top-4 right-4 landscape:top-2 landscape:right-2 z-40 landscape:scale-75 origin-top-right transition-all">
+          <div className="absolute top-4 right-4 landscape:top-2 landscape:right-2 z-40 landscape:scale-75 origin-top-right transition-all pointer-events-none">
               <img 
                 src={tournament.logoUrl} 
                 alt="Torneo" 
