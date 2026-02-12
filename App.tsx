@@ -161,7 +161,9 @@ export const App: React.FC = () => {
                    setActiveTournamentId(foundT.id);
                }
           }
-          if (currentView !== 'match') setCurrentView('match');
+          // Only auto-switch for VIEWERS who are already in match view or just logged in
+          // Referees control their own navigation to avoid being forced out of rotation view
+          if (currentUser?.role === 'VIEWER' && currentView !== 'match') setCurrentView('match');
           if (currentUser?.role === 'VIEWER' && !tvMode) setTvMode(true);
       }
   }, [liveMatch, currentUser, tournaments, activeTournamentId, currentView, tvMode]);
@@ -881,7 +883,16 @@ export const App: React.FC = () => {
   if (!currentUser) {
       return (
           <Login 
-            onLogin={(u) => { setCurrentUser(u); if(u.role !== 'VIEWER') initCloud(loadConfig()?.config || {}, loadConfig()?.organizationId || ''); }}
+            onLogin={(u) => { 
+                setCurrentUser(u); 
+                if(u.role !== 'VIEWER') {
+                    const saved = loadConfig();
+                    // Only attempt to init cloud if a config actually exists
+                    if (saved?.config) {
+                        initCloud(saved.config, saved.organizationId || '');
+                    }
+                } 
+            }}
             users={users}
             isCloudConnected={isCloudConnected}
             onOpenCloudConfig={() => setShowCloudConfig(true)}
@@ -1083,8 +1094,26 @@ export const App: React.FC = () => {
                                          )}
                                        </>
                                    )}
-                                   {/* Viewers can watch live */}
-                                   {(isLive || isFinished) && !isAdmin && (
+                                   
+                                   {/* Referee Specific Button */}
+                                   {currentUser?.role === 'REFEREE' && (isLive || isFinished) && (
+                                       <button 
+                                            onClick={() => {
+                                                if (!liveMatch || liveMatch.matchId !== fix.id) {
+                                                    handleInitiateMatch(fix.id, 'control');
+                                                } else {
+                                                    setCurrentView('match'); 
+                                                    setTvMode(false);
+                                                }
+                                            }}
+                                            className="bg-yellow-600 hover:bg-yellow-500 text-black px-4 py-2 rounded text-xs font-black uppercase tracking-widest shadow-lg transition flex items-center gap-2"
+                                       >
+                                           <span>⚖️</span> Ver Rotación
+                                       </button>
+                                   )}
+
+                                   {/* Viewers/Others can watch live */}
+                                   {(isLive || isFinished) && !isAdmin && currentUser?.role !== 'REFEREE' && (
                                         <button onClick={() => { setLiveMatch(liveMatch); setCurrentView('match'); setTvMode(true); }} className="bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded text-xs font-black uppercase tracking-widest border border-white/10 transition">
                                             {isLive ? '🔴 Ver en Vivo' : 'Ver Resultado'}
                                         </button>
@@ -1184,12 +1213,14 @@ export const App: React.FC = () => {
                                     players={liveMatch.rotationA} 
                                     serving={liveMatch.servingTeamId === activeTournament.fixtures?.find(f => f.id === liveMatch.matchId)?.teamAId}
                                     teamName={activeTournament.teams.find(t => t.id === activeTournament.fixtures?.find(f => f.id === liveMatch.matchId)?.teamAId)?.name!}
+                                    variant={currentUser.role === 'REFEREE' ? 'referee' : 'default'}
                                 />
                                 <div className="h-1 bg-white/20 w-full rounded-full"></div>
                                 <Court 
                                     players={liveMatch.rotationB} 
                                     serving={liveMatch.servingTeamId === activeTournament.fixtures?.find(f => f.id === liveMatch.matchId)?.teamBId}
                                     teamName={activeTournament.teams.find(t => t.id === activeTournament.fixtures?.find(f => f.id === liveMatch.matchId)?.teamBId)?.name!}
+                                    variant={currentUser.role === 'REFEREE' ? 'referee' : 'default'}
                                 />
                             </div>
                         </div>
@@ -1359,6 +1390,40 @@ export const App: React.FC = () => {
                           <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Nombre</label>
                           <input value={newTourneyData.name} onChange={e => setNewTourneyData({...newTourneyData, name: e.target.value})} className="w-full p-3 bg-black/40 border border-white/10 text-white font-bold focus:border-vnl-accent outline-none" placeholder="Ej: Copa Verano 2024" />
                       </div>
+                      
+                      {/* LOGO UPLOAD SECTION */}
+                      <div>
+                          <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Logo del Torneo (Opcional)</label>
+                          <div className="flex gap-4 items-center">
+                              <label 
+                                  htmlFor="tourney-logo-upload" 
+                                  className="flex-1 bg-black/40 hover:bg-white/5 border border-white/10 border-dashed rounded p-4 flex flex-col items-center justify-center cursor-pointer transition group"
+                              >
+                                  <span className="text-2xl mb-2 group-hover:scale-110 transition">📸</span>
+                                  <span className="text-[10px] font-bold text-slate-400 uppercase group-hover:text-white">Click para subir</span>
+                                  <input 
+                                      id="tourney-logo-upload" 
+                                      type="file" 
+                                      accept="image/*" 
+                                      className="hidden" 
+                                      onChange={(e) => handleFileUpload(e, (val) => setNewTourneyData(prev => ({...prev, logoUrl: val})))} 
+                                  />
+                              </label>
+                              
+                              {newTourneyData.logoUrl && (
+                                  <div className="w-20 h-20 bg-black/40 rounded border border-white/10 flex items-center justify-center p-2 relative group">
+                                      <img src={newTourneyData.logoUrl} className="max-w-full max-h-full object-contain" />
+                                      <button 
+                                          onClick={() => setNewTourneyData(prev => ({...prev, logoUrl: ''}))}
+                                          className="absolute -top-2 -right-2 bg-red-600 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold shadow-sm opacity-0 group-hover:opacity-100 transition"
+                                      >
+                                          ✕
+                                      </button>
+                                  </div>
+                              )}
+                          </div>
+                      </div>
+
                       <div className="grid grid-cols-2 gap-4">
                           <div>
                               <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Inicio</label>

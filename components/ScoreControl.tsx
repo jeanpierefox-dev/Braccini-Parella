@@ -38,12 +38,50 @@ export const ScoreControl: React.FC<ScoreControlProps> = ({
   isServing
 }) => {
   const isAdmin = role === 'ADMIN';
+  const isReferee = role === 'REFEREE';
   const isTeamCoach = (role === 'COACH_A' || role === 'COACH_B') && linkedTeamId === teamId; 
   
   const [selectedAction, setSelectedAction] = React.useState<'attack' | 'block' | 'ace' | 'opponent_error' | 'yellow_card' | 'red_card' | null>(null);
 
-  if (!isAdmin && !isTeamCoach) return null;
+  if (!isAdmin && !isTeamCoach && !isReferee) return null;
 
+  // --- REFEREE VIEW (Rotation List Only) ---
+  if (isReferee) {
+      return (
+          <div className={`bg-black/40 backdrop-blur p-4 rounded-xl border ${isServing ? 'border-yellow-500/50 shadow-[0_0_15px_rgba(234,179,8,0.1)]' : 'border-white/10'} h-full flex flex-col`}>
+              <div className="flex justify-between items-center border-b border-white/10 pb-3 mb-3">
+                  <h3 className={`font-black text-lg uppercase tracking-wider ${isServing ? 'text-yellow-400' : 'text-white'}`}>{teamName}</h3>
+                  {isServing && <span className="text-[10px] font-bold bg-yellow-500 text-black px-2 py-0.5 rounded uppercase">Saque</span>}
+              </div>
+              
+              <div className="flex-grow space-y-2 overflow-y-auto">
+                  {/* Standard Rotation Display P1-P6 */}
+                  {players.map((p, i) => {
+                      const pos = i + 1; // P1, P2...
+                      const isServer = pos === 1 && isServing;
+                      return (
+                          <div 
+                            key={p.id || i} 
+                            className={`flex justify-between items-center p-3 rounded border transition-colors ${isServer ? 'bg-yellow-500/20 border-yellow-500/50' : 'bg-white/5 border-white/5'}`}
+                          >
+                              <div className="flex items-center gap-3">
+                                  <span className={`text-xs font-black w-6 ${isServer ? 'text-yellow-400' : 'text-slate-500'}`}>P{pos}</span>
+                                  <span className={`font-mono font-bold text-lg ${p.name === 'Libero' ? 'text-yellow-200' : 'text-white'}`}>#{p.number}</span>
+                              </div>
+                              <span className="text-xs font-bold text-slate-300 uppercase truncate max-w-[100px]">{p.name.split(' ')[0]}</span>
+                          </div>
+                      );
+                  })}
+              </div>
+              
+              <div className="mt-4 pt-3 border-t border-white/10 text-center">
+                  <p className="text-[9px] text-slate-500 uppercase font-bold tracking-widest">Verificación de Rotación</p>
+              </div>
+          </div>
+      );
+  }
+
+  // --- ADMIN & COACH VIEW ---
   return (
     <div className={`bg-vnl-panel/90 backdrop-blur p-5 rounded border shadow-xl transition-all duration-300 ${isServing ? 'border-yellow-400/50 shadow-[0_0_15px_rgba(250,204,21,0.1)]' : 'border-white/10'} ${disabled ? 'opacity-50 pointer-events-none grayscale' : ''}`}>
       <div className="flex justify-between items-center border-b border-white/10 pb-3 mb-4">
