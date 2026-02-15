@@ -61,8 +61,7 @@ export const App: React.FC = () => {
   
   // UI States
   const [tvMode, setTvMode] = useState(false);
-  const [showStatsOnTV, setShowStatsOnTV] = useState(false); 
-  const [showScoreboardOnTV, setShowScoreboardOnTV] = useState(true); 
+  // REMOVED LOCAL STATES: showStatsOnTV, showScoreboardOnTV - Now managed inside liveMatch for sync
   const [editingPlayer, setEditingPlayer] = useState<Player | null>(null);
   const [loading, setLoading] = useState(false);
   const [viewingSetStats, setViewingSetStats] = useState<{setNum: number, data: MatchSet} | null>(null);
@@ -207,6 +206,7 @@ export const App: React.FC = () => {
   const updateUsers = (newUsers: User[]) => { setUsers(newUsers); if (isCloudConnected) pushData('users', newUsers); };
   const updateTeams = (newTeams: Team[]) => { setRegisteredTeams(newTeams); if (isCloudConnected) pushData('teams', newTeams); };
   const updateTournaments = (newTourneys: Tournament[]) => { setTournaments(newTourneys); if (isCloudConnected) pushData('tournaments', newTourneys); };
+  // CRITICAL: Ensure liveMatch updates are pushed to cloud to sync TV settings
   const updateLiveMatch = (update: LiveMatchState | null | ((prev: LiveMatchState | null) => LiveMatchState | null)) => {
       setLiveMatch(prev => {
           const newVal = update instanceof Function ? update(prev) : update;
@@ -414,7 +414,7 @@ export const App: React.FC = () => {
       timeoutsA: 0, timeoutsB: 0, 
       substitutionsA: 0, substitutionsB: 0, 
       requests: [],
-      // Initialize TV Settings in Cloud State
+      // Initialize TV Settings in Cloud State so they sync to viewers
       showScoreboard: true,
       showStats: false
     });
@@ -892,8 +892,6 @@ export const App: React.FC = () => {
           <Login 
             onLogin={(u: User) => { 
                 setCurrentUser(u); 
-                // Fix: Always attempt to init cloud if config exists
-                // This allows Viewers to see live data immediately
                 const saved = loadConfig();
                 if (saved?.config) {
                     initCloud(saved.config, saved.organizationId || '');
@@ -920,7 +918,7 @@ export const App: React.FC = () => {
             onBack={currentUser.role === 'VIEWER' ? () => { setCurrentView('dashboard'); setTvMode(false); } : undefined}
             onNextSet={handleStartNextSet}
             nextSetCountdown={nextSetCountdown}
-            // Pass the CLOUD STATE directly to ensure viewers see what admin controls
+            // PASS CLOUD STATE TO OVERLAY
             showStatsOverlay={liveMatch.showStats}
             showScoreboard={liveMatch.showScoreboard}
             isCloudConnected={isCloudConnected}
@@ -1107,7 +1105,6 @@ export const App: React.FC = () => {
                                        <button 
                                             onClick={() => {
                                                 if (!liveMatch || liveMatch.matchId !== fix.id) {
-                                                    // This will set state but not trigger modal if referee logic is correct
                                                     handleInitiateMatch(fix.id, 'control');
                                                 } else {
                                                     setCurrentView('match'); 
@@ -1153,14 +1150,15 @@ export const App: React.FC = () => {
                                  <>
                                     <button onClick={openEditRules} className="bg-white/5 hover:bg-white/10 text-slate-300 px-3 py-1.5 rounded text-xs font-bold uppercase tracking-widest border border-white/10">Reglas</button>
                                     
+                                    {/* BUTTONS NOW UPDATE CLOUD STATE */}
                                     <button 
-                                        onClick={() => updateLiveMatch({...liveMatch, showScoreboard: !liveMatch.showScoreboard})} 
+                                        onClick={() => updateLiveMatch(prev => prev ? {...prev, showScoreboard: !prev.showScoreboard} : null)} 
                                         className={`px-3 py-1.5 rounded text-xs font-bold uppercase tracking-widest border border-white/10 transition ${liveMatch.showScoreboard ? 'bg-green-600 text-white' : 'bg-black/40 text-slate-500'}`}
                                     >
                                         Tablero
                                     </button>
                                     <button 
-                                        onClick={() => updateLiveMatch({...liveMatch, showStats: !liveMatch.showStats})} 
+                                        onClick={() => updateLiveMatch(prev => prev ? {...prev, showStats: !prev.showStats} : null)} 
                                         className={`px-3 py-1.5 rounded text-xs font-bold uppercase tracking-widest border border-white/10 transition ${liveMatch.showStats ? 'bg-blue-600 text-white' : 'bg-black/40 text-slate-500'}`}
                                     >
                                         Stats TV
@@ -1180,7 +1178,7 @@ export const App: React.FC = () => {
                      
                      {/* Game Area */}
                      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                        {/* Team A Control - Only visible to ADMIN or COACH_A */}
+                        {/* Team A Control */}
                         {currentUser.role !== 'REFEREE' && (
                             <div className="lg:col-span-3 space-y-4">
                                 <ScoreControl 
@@ -1211,7 +1209,7 @@ export const App: React.FC = () => {
                             </div>
                         )}
                         
-                        {/* Court Center - Visible to EVERYONE, but REFEREE gets full width */}
+                        {/* Court Center */}
                         <div className={`${currentUser.role === 'REFEREE' ? 'lg:col-span-12' : 'lg:col-span-6'} flex flex-col gap-4`}>
                             {/* Scoreboard Display */}
                             <div className="bg-black/60 rounded-xl border border-white/10 p-4 flex justify-between items-center shadow-2xl relative overflow-hidden">
@@ -1257,7 +1255,7 @@ export const App: React.FC = () => {
                             </div>
                         </div>
 
-                        {/* Team B Control - Only visible to ADMIN or COACH_B */}
+                        {/* Team B Control */}
                         {currentUser.role !== 'REFEREE' && (
                             <div className="lg:col-span-3 space-y-4">
                                 <ScoreControl 
@@ -1296,7 +1294,6 @@ export const App: React.FC = () => {
       {currentView === 'teams' && (
           <div className="space-y-8 animate-in slide-in-from-right-4">
                {/* ... */}
-               {/* Simplified for output - assume rest of component is same as previous ... */}
                <div className="flex justify-between items-center border-b border-white/10 pb-4">
                    <h2 className="text-3xl font-black text-white uppercase italic tracking-tighter">Gestión de <span className="text-vnl-accent">Equipos</span></h2>
                </div>
