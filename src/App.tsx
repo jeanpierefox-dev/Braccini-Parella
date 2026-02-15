@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Layout } from './components/Layout';
 import { Court } from './components/Court';
@@ -61,8 +62,7 @@ export const App: React.FC = () => {
   
   // UI States
   const [tvMode, setTvMode] = useState(false);
-  const [showStatsOnTV, setShowStatsOnTV] = useState(false); 
-  const [showScoreboardOnTV, setShowScoreboardOnTV] = useState(true); 
+  // Removed local showStatsOnTV/showScoreboardOnTV to rely on liveMatch synced state
   const [editingPlayer, setEditingPlayer] = useState<Player | null>(null);
   const [loading, setLoading] = useState(false);
   const [viewingSetStats, setViewingSetStats] = useState<{setNum: number, data: MatchSet} | null>(null);
@@ -412,7 +412,10 @@ export const App: React.FC = () => {
       scoreA: 0, scoreB: 0, 
       timeoutsA: 0, timeoutsB: 0, 
       substitutionsA: 0, substitutionsB: 0, 
-      requests: []
+      requests: [],
+      // Default TV Settings
+      showScoreboard: true,
+      showStats: false
     });
     
     setShowMatchConfigModal(null);
@@ -912,8 +915,8 @@ export const App: React.FC = () => {
             onBack={currentUser.role === 'VIEWER' ? () => { setCurrentView('dashboard'); setTvMode(false); } : undefined}
             onNextSet={handleStartNextSet}
             nextSetCountdown={nextSetCountdown}
-            showStatsOverlay={showStatsOnTV}
-            showScoreboard={showScoreboardOnTV}
+            showStatsOverlay={liveMatch.showStats}
+            showScoreboard={liveMatch.showScoreboard}
             isCloudConnected={isCloudConnected}
           />
       );
@@ -1142,8 +1145,18 @@ export const App: React.FC = () => {
                              {isAdmin && (
                                  <>
                                     <button onClick={openEditRules} className="bg-white/5 hover:bg-white/10 text-slate-300 px-3 py-1.5 rounded text-xs font-bold uppercase tracking-widest border border-white/10">Reglas</button>
-                                    <button onClick={() => setShowScoreboardOnTV(!showScoreboardOnTV)} className={`px-3 py-1.5 rounded text-xs font-bold uppercase tracking-widest border border-white/10 transition ${showScoreboardOnTV ? 'bg-green-600 text-white' : 'bg-black/40 text-slate-500'}`}>Tablero</button>
-                                    <button onClick={() => setShowStatsOnTV(!showStatsOnTV)} className={`px-3 py-1.5 rounded text-xs font-bold uppercase tracking-widest border border-white/10 transition ${showStatsOnTV ? 'bg-blue-600 text-white' : 'bg-black/40 text-slate-500'}`}>Stats TV</button>
+                                    <button 
+                                        onClick={() => updateLiveMatch({...liveMatch, showScoreboard: !liveMatch.showScoreboard})} 
+                                        className={`px-3 py-1.5 rounded text-xs font-bold uppercase tracking-widest border border-white/10 transition ${liveMatch.showScoreboard ? 'bg-green-600 text-white' : 'bg-black/40 text-slate-500'}`}
+                                    >
+                                        Tablero
+                                    </button>
+                                    <button 
+                                        onClick={() => updateLiveMatch({...liveMatch, showStats: !liveMatch.showStats})} 
+                                        className={`px-3 py-1.5 rounded text-xs font-bold uppercase tracking-widest border border-white/10 transition ${liveMatch.showStats ? 'bg-blue-600 text-white' : 'bg-black/40 text-slate-500'}`}
+                                    >
+                                        Stats TV
+                                    </button>
                                     <button onClick={() => setTvMode(true)} className="bg-vnl-accent hover:bg-cyan-400 text-black px-3 py-1.5 rounded text-xs font-bold uppercase tracking-widest shadow">Vista TV 📺</button>
                                     <button onClick={handleEndBroadcast} className="bg-red-900/50 hover:bg-red-800 text-red-200 border border-red-500/30 px-3 py-1.5 rounded text-xs font-bold uppercase tracking-widest">Terminar</button>
                                  </>
@@ -1378,12 +1391,15 @@ export const App: React.FC = () => {
           />
       )}
       
+      {/* ... (Existing Modals remain unchanged) ... */}
+      
       {/* Create Tournament Modal */}
       {showCreateTourneyModal && (
           <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4 backdrop-blur-md">
               <div className="bg-vnl-panel border border-white/20 p-6 w-full max-w-lg shadow-[0_0_50px_rgba(6,182,212,0.2)]">
                   <h3 className="text-xl font-black text-white uppercase italic tracking-tighter mb-6 border-b border-white/10 pb-2">Nuevo Torneo</h3>
                   <div className="space-y-4">
+                      {/* ... (Create Tournament Content) ... */}
                       <div>
                           <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Nombre</label>
                           <input value={newTourneyData.name} onChange={e => setNewTourneyData({...newTourneyData, name: e.target.value})} className="w-full p-3 bg-black/40 border border-white/10 text-white font-bold focus:border-vnl-accent outline-none" placeholder="Ej: Copa Verano 2024" />
