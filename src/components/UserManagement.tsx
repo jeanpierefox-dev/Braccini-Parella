@@ -119,11 +119,10 @@ export const UserManagement: React.FC<UserManagementProps> = ({ users, teams, cu
                         <option value="MAIN_REFEREE">Árbitro Principal (Marcador)</option>
                         <option value="REFEREE">Árbitro de Piso (Rotaciones)</option>
                         <option value="COACH_A">Entrenador (Coach)</option>
-                        <option value="PLAYER">Jugador</option>
                       </>
                   ) : (
                       // Coach can only create players or viewers
-                      <option value="PLAYER">Jugador</option>
+                      <option value="VIEWER">Espectador / TV</option>
                   )}
                 </select>
               </div>

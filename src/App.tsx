@@ -967,7 +967,7 @@ export const App: React.FC = () => {
                      <h3 className="text-xl font-bold text-white uppercase italic">Equipos</h3>
                      <p className="text-sm text-slate-500 mt-1">Administrar plantillas y jugadores</p>
                  </button>
-                 {canControlMatch && (
+                 {isAdmin && (
                     <button onClick={() => setCurrentView('users')} className="bg-corp-panel hover:bg-white/5 border border-white/10 p-6 rounded-xl group transition duration-300 md:col-span-2">
                         <span className="text-4xl mb-2 block group-hover:scale-110 transition">⚙️</span>
                         <h3 className="text-xl font-bold text-white uppercase italic">Administración</h3>
