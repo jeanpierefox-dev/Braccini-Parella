@@ -43,6 +43,9 @@ export const App: React.FC = () => {
   // --- STATE ---
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const isAdmin = currentUser?.role === 'ADMIN';
+  const isMainReferee = currentUser?.role === 'MAIN_REFEREE';
+  // Privilege Check for Match Control (Admin or Main Referee)
+  const canControlMatch = isAdmin || isMainReferee;
   
   // Navigation
   const [currentView, setCurrentView] = useState('home'); 
@@ -61,7 +64,6 @@ export const App: React.FC = () => {
   
   // UI States
   const [tvMode, setTvMode] = useState(false);
-  // REMOVED LOCAL STATES: showStatsOnTV, showScoreboardOnTV - Now managed inside liveMatch for sync
   const [editingPlayer, setEditingPlayer] = useState<Player | null>(null);
   const [loading, setLoading] = useState(false);
   const [viewingSetStats, setViewingSetStats] = useState<{setNum: number, data: MatchSet} | null>(null);
@@ -135,7 +137,7 @@ export const App: React.FC = () => {
           if (typeof val === 'object') return Object.values(val);
           return [];
       };
-      const unsubUsers = syncData<any>('users', (val: any) => {
+      const unsubUsers = syncData<any>('users', (val) => {
           const loadedUsers = normalizeArray<User>(val);
           if (loadedUsers.length > 0) {
               setUsers(loadedUsers);
@@ -144,28 +146,24 @@ export const App: React.FC = () => {
               pushData('users', [DEFAULT_ADMIN]);
           }
       });
-      const unsubTeams = syncData<any>('teams', (val: any) => setRegisteredTeams(normalizeArray<Team>(val)));
-      const unsubTourneys = syncData<any>('tournaments', (val: any) => setTournaments(normalizeArray<Tournament>(val)));
-      const unsubLive = syncData<LiveMatchState | null>('liveMatch', (val: LiveMatchState | null) => setLiveMatch(val));
+      const unsubTeams = syncData<any>('teams', (val) => setRegisteredTeams(normalizeArray<Team>(val)));
+      const unsubTourneys = syncData<any>('tournaments', (val) => setTournaments(normalizeArray<Tournament>(val)));
+      const unsubLive = syncData<LiveMatchState | null>('liveMatch', (val) => setLiveMatch(val));
       return () => { unsubUsers(); unsubTeams(); unsubTourneys(); unsubLive(); };
   }, [isCloudConnected]);
 
-  // --- VIEWER & ADMIN AUTO-SYNC LOGIC ---
+  // --- VIEWER AUTO-SYNC LOGIC ---
   useEffect(() => {
-      if (liveMatch && tournaments.length > 0) {
-          // Fix: Automatically select the active tournament for ALL users (Admin & Viewer)
+      if ((currentUser?.role === 'VIEWER' || currentUser?.role === 'REFEREE') && liveMatch && tournaments.length > 0) {
           if (!activeTournamentId || activeTournamentId !== tournaments.find(t => t.fixtures?.some(f => f.id === liveMatch.matchId))?.id) {
                const foundT = tournaments.find(t => t.fixtures?.some(f => f.id === liveMatch.matchId));
                if (foundT) {
                    setActiveTournamentId(foundT.id);
                }
           }
-          
-          // Only force navigation for VIEWERS/REFEREES who are not yet watching
-          if ((currentUser?.role === 'VIEWER' || currentUser?.role === 'REFEREE') && currentView !== 'match') {
-              setCurrentView('match');
-          }
-          // TV Mode only for pure viewers, Referees need the UI
+          // Only auto-switch for VIEWERS who are already in match view or just logged in
+          // Referees control their own navigation to avoid being forced out of rotation view
+          if (currentUser?.role === 'VIEWER' && currentView !== 'match') setCurrentView('match');
           if (currentUser?.role === 'VIEWER' && !tvMode) setTvMode(true);
       }
   }, [liveMatch, currentUser, tournaments, activeTournamentId, currentView, tvMode]);
@@ -183,7 +181,7 @@ export const App: React.FC = () => {
 
     let timer: any;
     // Only run auto-countdown if the modal is NOT open, to avoid conflict
-    if (liveMatch?.status === 'finished_set' && currentUser?.role === 'ADMIN' && !viewingSetStats) {
+    if (liveMatch?.status === 'finished_set' && canControlMatch && !viewingSetStats) {
         setNextSetCountdown(10); 
         timer = setInterval(() => {
             setNextSetCountdown(prev => {
@@ -199,7 +197,7 @@ export const App: React.FC = () => {
         setNextSetCountdown(null);
     }
     return () => clearInterval(timer);
-  }, [liveMatch?.status, viewingSetStats, currentUser?.role]);
+  }, [liveMatch?.status, viewingSetStats, canControlMatch]);
 
 
   // --- SYNC HELPERS ---
@@ -352,7 +350,8 @@ export const App: React.FC = () => {
           setCurrentView('match'); 
           return; 
       }
-      if (currentUser?.role === 'ADMIN' || currentUser?.role.includes('COACH') || currentUser?.role === 'REFEREE') {
+      // Check if user is Admin, Coach, Referee or Main Referee
+      if (canControlMatch || currentUser?.role.includes('COACH') || currentUser?.role === 'REFEREE') {
           if (currentUser.role === 'REFEREE') {
               setCurrentView('match');
               return;
@@ -559,7 +558,7 @@ export const App: React.FC = () => {
   };
 
   const handleEndBroadcast = async () => {
-      if (!liveMatch || !activeTournament || currentUser?.role !== 'ADMIN') return;
+      if (!liveMatch || !activeTournament || !canControlMatch) return;
       if (!confirm("¿Confirmar y Guardar Resultado Final?")) return;
       
       const sets = liveMatch.sets || [];
@@ -738,7 +737,7 @@ export const App: React.FC = () => {
   };
 
   const handleSubtractPoint = (teamId: string) => {
-    if (!liveMatch || !activeTournament || !isAdmin) return;
+    if (!liveMatch || !activeTournament || !canControlMatch) return;
     const fixture = activeTournament.fixtures?.find(f => f.id === liveMatch.matchId)!;
     const isTeamA = teamId === fixture.teamAId;
 
@@ -773,7 +772,7 @@ export const App: React.FC = () => {
 
   const handleRequestTimeout = (teamId: string) => {
     if (!liveMatch) return;
-    if (currentUser?.role === 'ADMIN') {
+    if (canControlMatch) {
        updateLiveMatch(prev => {
            if (!prev) return null;
            const fixture = activeTournament?.fixtures?.find(f => f.id === prev.matchId);
@@ -968,7 +967,7 @@ export const App: React.FC = () => {
                      <h3 className="text-xl font-bold text-white uppercase italic">Equipos</h3>
                      <p className="text-sm text-slate-500 mt-1">Administrar plantillas y jugadores</p>
                  </button>
-                 {isAdmin && (
+                 {canControlMatch && (
                     <button onClick={() => setCurrentView('users')} className="bg-corp-panel hover:bg-white/5 border border-white/10 p-6 rounded-xl group transition duration-300 md:col-span-2">
                         <span className="text-4xl mb-2 block group-hover:scale-110 transition">⚙️</span>
                         <h3 className="text-xl font-bold text-white uppercase italic">Administración</h3>
@@ -1082,16 +1081,18 @@ export const App: React.FC = () => {
                                </div>
 
                                <div className="w-full md:w-1/3 flex justify-end gap-2">
-                                   {isAdmin && (
+                                   {canControlMatch && (
                                        <>
                                          {isLive ? (
                                              <button onClick={() => handleInitiateMatch(fix.id, 'control')} className="bg-green-600 hover:bg-green-500 text-white px-4 py-2 rounded text-xs font-black uppercase tracking-widest shadow-lg transition animate-pulse">
                                                  Continuar
                                              </button>
                                          ) : isFinished ? (
-                                              <button onClick={() => handleResetMatch(fix.id)} className="text-xs font-bold text-slate-500 hover:text-red-400 uppercase tracking-wider px-3 py-2 border border-transparent hover:border-red-500/30 rounded transition">
-                                                 Reiniciar
-                                              </button>
+                                              isAdmin && ( // Only Admin can reset, not Main Referee
+                                                  <button onClick={() => handleResetMatch(fix.id)} className="text-xs font-bold text-slate-500 hover:text-red-400 uppercase tracking-wider px-3 py-2 border border-transparent hover:border-red-500/30 rounded transition">
+                                                     Reiniciar
+                                                  </button>
+                                              )
                                          ) : (
                                               <button onClick={() => handleInitiateMatch(fix.id, 'control')} className="bg-vnl-accent hover:bg-cyan-400 text-black px-4 py-2 rounded text-xs font-black uppercase tracking-widest shadow transition">
                                                   Iniciar
@@ -1100,7 +1101,7 @@ export const App: React.FC = () => {
                                        </>
                                    )}
                                    
-                                   {/* Referee Specific Button */}
+                                   {/* Floor Referee Specific Button */}
                                    {currentUser?.role === 'REFEREE' && (isLive || isFinished) && (
                                        <button 
                                             onClick={() => {
@@ -1118,7 +1119,7 @@ export const App: React.FC = () => {
                                    )}
 
                                    {/* Viewers/Others can watch live */}
-                                   {(isLive || isFinished) && !isAdmin && currentUser?.role !== 'REFEREE' && (
+                                   {(isLive || isFinished) && !canControlMatch && currentUser?.role !== 'REFEREE' && (
                                         <button onClick={() => { setLiveMatch(liveMatch); setCurrentView('match'); setTvMode(true); }} className="bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded text-xs font-black uppercase tracking-widest border border-white/10 transition">
                                             {isLive ? '🔴 Ver en Vivo' : 'Ver Resultado'}
                                         </button>
@@ -1146,7 +1147,7 @@ export const App: React.FC = () => {
                              </span>
                          </div>
                          <div className="flex gap-2">
-                             {isAdmin && (
+                             {canControlMatch && (
                                  <>
                                     <button onClick={openEditRules} className="bg-white/5 hover:bg-white/10 text-slate-300 px-3 py-1.5 rounded text-xs font-bold uppercase tracking-widest border border-white/10">Reglas</button>
                                     
@@ -1217,12 +1218,12 @@ export const App: React.FC = () => {
                                 <div className="flex flex-col items-center z-10">
                                     <div className="text-xs font-bold text-slate-500 uppercase tracking-widest">Set {liveMatch.currentSet}</div>
                                     <div className="text-2xl font-black text-white italic">VS</div>
-                                    {liveMatch.status === 'finished_set' && isAdmin && (
+                                    {liveMatch.status === 'finished_set' && canControlMatch && (
                                         <button onClick={handleStartNextSet} className="mt-2 bg-green-600 hover:bg-green-500 text-white px-4 py-1 rounded-full text-xs font-bold uppercase animate-pulse shadow-lg">
                                             Siguiente Set
                                         </button>
                                     )}
-                                    {liveMatch.status === 'warmup' && isAdmin && (
+                                    {liveMatch.status === 'warmup' && canControlMatch && (
                                         <button onClick={handleStartGame} className="mt-2 bg-green-600 hover:bg-green-500 text-white px-4 py-1 rounded-full text-xs font-bold uppercase animate-pulse shadow-lg">
                                             Iniciar Partido
                                         </button>
@@ -1405,7 +1406,7 @@ export const App: React.FC = () => {
               teamB={activeTournament.teams.find(t => t.id === activeTournament?.fixtures?.find(f => f.id === liveMatch?.matchId)?.teamBId)!}
               onClose={() => setViewingSetStats(null)}
               onNextSet={() => { handleStartNextSet(); setViewingSetStats(null); }}
-              showNextButton={isAdmin && liveMatch?.status === 'finished_set'}
+              showNextButton={canControlMatch && liveMatch?.status === 'finished_set'}
           />
       )}
       

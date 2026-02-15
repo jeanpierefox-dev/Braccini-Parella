@@ -37,33 +37,37 @@ export const ScoreControl: React.FC<ScoreControlProps> = ({
   isServing
 }) => {
   const isAdmin = role === 'ADMIN';
+  const isMainReferee = role === 'MAIN_REFEREE';
   const isTeamCoach = (role === 'COACH_A' || role === 'COACH_B') && linkedTeamId === teamId; 
   
+  // Can score if Admin or Main Referee
+  const canScore = isAdmin || isMainReferee;
+
   const [selectedAction, setSelectedAction] = React.useState<'attack' | 'block' | 'ace' | 'opponent_error' | 'yellow_card' | 'red_card' | null>(null);
 
-  // If role is Referee, we render nothing here because the main App.tsx handles the Referee View separately with the Court component.
+  // Floor Referee (REFEREE) doesn't use this component, they use the rotation view in App.tsx
   if (role === 'REFEREE') return null;
 
-  if (!isAdmin && !isTeamCoach) return null;
+  if (!canScore && !isTeamCoach) return null;
 
-  // --- ADMIN & COACH VIEW ---
+  // --- ADMIN, MAIN REFEREE & COACH VIEW ---
   return (
     <div className={`bg-vnl-panel/90 backdrop-blur p-5 rounded border shadow-xl transition-all duration-300 ${isServing ? 'border-yellow-400/50 shadow-[0_0_15px_rgba(250,204,21,0.1)]' : 'border-white/10'} ${disabled ? 'opacity-50 pointer-events-none grayscale' : ''}`}>
       <div className="flex justify-between items-center border-b border-white/10 pb-3 mb-4">
           <div className="flex items-center gap-3">
             {/* Manual Serve Toggle Button */}
             <button 
-                onClick={() => isAdmin && onSetServe(teamId)}
-                disabled={!isAdmin || disabled}
+                onClick={() => canScore && onSetServe(teamId)}
+                disabled={!canScore || disabled}
                 className={`w-8 h-8 rounded-full flex items-center justify-center border transition-all ${isServing ? 'bg-yellow-400 border-yellow-500 text-black shadow-[0_0_10px_yellow]' : 'bg-black/40 border-white/10 text-slate-600 grayscale hover:grayscale-0'}`}
-                title={isAdmin ? "Click para asignar saque" : "Indicador de Saque"}
+                title={canScore ? "Click para asignar saque" : "Indicador de Saque"}
             >
                 🏐
             </button>
             
             <h3 className={`font-bold text-lg uppercase tracking-wider ${isServing ? 'text-yellow-400' : 'text-white'}`}>{teamName}</h3>
             
-            {isAdmin && onSubtractPoint && !disabled && (
+            {canScore && onSubtractPoint && !disabled && (
               <button 
                 onClick={() => onSubtractPoint(teamId)}
                 className="bg-red-900/30 hover:bg-red-800 text-red-400 w-6 h-6 rounded flex items-center justify-center text-xs font-bold border border-red-500/20 transition ml-2"
@@ -73,7 +77,7 @@ export const ScoreControl: React.FC<ScoreControlProps> = ({
               </button>
             )}
           </div>
-          {(isAdmin || isTeamCoach) && (
+          {(canScore || isTeamCoach) && (
               <button 
                 onClick={() => onModifyRotation(teamId)}
                 className="text-[10px] bg-white/10 hover:bg-white/20 text-slate-300 px-3 py-1 rounded border border-white/10 transition uppercase font-bold tracking-wider"
@@ -84,7 +88,7 @@ export const ScoreControl: React.FC<ScoreControlProps> = ({
           )}
       </div>
       
-      {isAdmin ? (
+      {canScore ? (
         <div className="space-y-4">
           {/* Quick Point Button */}
           <button 
@@ -172,7 +176,7 @@ export const ScoreControl: React.FC<ScoreControlProps> = ({
          </div>
       )}
 
-      {/* Coach/Admin Actions */}
+      {/* Coach/Admin/Referee Actions */}
       <div className="mt-4 pt-4 border-t border-white/10 grid grid-cols-2 gap-3">
         <button
           onClick={() => onRequestTimeout(teamId)}
