@@ -62,7 +62,7 @@ export const App: React.FC = () => {
   
   // UI States
   const [tvMode, setTvMode] = useState(false);
-  // Removed local showStatsOnTV/showScoreboardOnTV to rely on liveMatch synced state
+  // Removed local stats/scoreboard state to use liveMatch (Cloud) state
   const [editingPlayer, setEditingPlayer] = useState<Player | null>(null);
   const [loading, setLoading] = useState(false);
   const [viewingSetStats, setViewingSetStats] = useState<{setNum: number, data: MatchSet} | null>(null);
@@ -151,19 +151,23 @@ export const App: React.FC = () => {
       return () => { unsubUsers(); unsubTeams(); unsubTourneys(); unsubLive(); };
   }, [isCloudConnected]);
 
-  // --- VIEWER AUTO-SYNC LOGIC ---
+  // --- VIEWER & ADMIN AUTO-SYNC LOGIC ---
   useEffect(() => {
-      if ((currentUser?.role === 'VIEWER' || currentUser?.role === 'REFEREE') && liveMatch && tournaments.length > 0) {
+      if (liveMatch && tournaments.length > 0) {
+          // Fix: Automatically select the active tournament for ALL users (Admin & Viewer)
+          // This prevents the match view from disappearing on page refresh for Admins
           if (!activeTournamentId || activeTournamentId !== tournaments.find(t => t.fixtures?.some(f => f.id === liveMatch.matchId))?.id) {
                const foundT = tournaments.find(t => t.fixtures?.some(f => f.id === liveMatch.matchId));
                if (foundT) {
                    setActiveTournamentId(foundT.id);
                }
           }
-          // Only auto-switch for VIEWERS who are already in match view or just logged in
-          // Referees control their own navigation to avoid being forced out of rotation view
-          if (currentUser?.role === 'VIEWER' && currentView !== 'match') setCurrentView('match');
-          if (currentUser?.role === 'VIEWER' && !tvMode) setTvMode(true);
+          
+          // Only force navigation for VIEWERS
+          if (currentUser?.role === 'VIEWER') {
+              if (currentView !== 'match') setCurrentView('match');
+              if (!tvMode) setTvMode(true);
+          }
       }
   }, [liveMatch, currentUser, tournaments, activeTournamentId, currentView, tvMode]);
 
@@ -211,6 +215,7 @@ export const App: React.FC = () => {
       });
   };
   
+  // ... (Keep existing data handlers: handleAddTeam, handleDeleteTeam, etc.) ...
   const handleAddTeam = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTeamName.trim()) return;
@@ -349,10 +354,7 @@ export const App: React.FC = () => {
           return; 
       }
       if (currentUser?.role === 'ADMIN' || currentUser?.role.includes('COACH') || currentUser?.role === 'REFEREE') {
-          // Referee enters directly without config modal if match is already live, or waits if not
           if (currentUser.role === 'REFEREE') {
-              // If match is not live, referee cannot start it (only ADMIN/COACH starts via config)
-              // But for simplicity in this demo, we can let them enter 'match' view which will show "Waiting for start"
               setCurrentView('match');
               return;
           }
@@ -402,7 +404,7 @@ export const App: React.FC = () => {
     updateLiveMatch({
       matchId: fixtureId, 
       config: matchConfig,
-      status: 'warmup', // Initialize in Warmup mode
+      status: 'warmup', 
       currentSet: 1, 
       sets: [initialSet],
       rotationA, rotationB, 
@@ -413,7 +415,7 @@ export const App: React.FC = () => {
       timeoutsA: 0, timeoutsB: 0, 
       substitutionsA: 0, substitutionsB: 0, 
       requests: [],
-      // Default TV Settings
+      // Initialize TV Settings in Cloud State
       showScoreboard: true,
       showStats: false
     });
@@ -435,8 +437,7 @@ export const App: React.FC = () => {
       updateLiveMatch({ ...liveMatch, servingTeamId: teamId });
   };
 
-  // --- NEW SET MANAGEMENT SYSTEM ---
-  
+  // ... (Keep existing set logic: handleSetOperation, handleStartNextSet) ...
   const handleSetOperation = (action: 'START' | 'FINISH' | 'REOPEN', setIndex: number) => {
       if (!activeTournament || !liveMatch) return;
 
@@ -489,21 +490,17 @@ export const App: React.FC = () => {
                  return { ...prev, status: 'finished', sets: updatedSets };
              }
 
-             // Auto-increment set number if we are finishing the current set
              if (prev.currentSet === setIndex + 1) {
                  const nextSetNum = prev.currentSet + 1;
-                 
                  if (updatedSets.length < nextSetNum) {
                      updatedSets.push({ scoreA: 0, scoreB: 0, history: [], durationMinutes: 0 });
                  }
-                 
                  const fixture = activeTournament.fixtures?.find(f => f.id === prev.matchId);
-                 // Determine next server: Odd sets Team A, Even sets Team B (simplified rule)
                  const nextServingTeam = fixture ? ((nextSetNum % 2 !== 0) ? fixture.teamAId : fixture.teamBId) : prev.servingTeamId;
 
                  return {
                      ...prev,
-                     status: 'playing', // Set to playing to start next set
+                     status: 'playing', 
                      currentSet: nextSetNum,
                      scoreA: 0,
                      scoreB: 0,
@@ -543,7 +540,8 @@ export const App: React.FC = () => {
       handleSetOperation('FINISH', liveMatch.currentSet - 1); 
   };
 
-  // ... (ResetMatch, EndBroadcast, etc.)
+  // ... (Keep existing handlers: handleResetMatch, handleEndBroadcast, rotateTeam, handlePoint, etc.) ...
+  // ... (Truncated for brevity but included in output logic: handleResetMatch, handleEndBroadcast, rotateTeam, handlePoint, handleSubtractPoint, handleRequestTimeout, initiateSubRequest, handleConfirmSub, initiateRotationCheck, handleUpdateRotation) ...
   const handleResetMatch = (fixtureId: string) => {
       if (!activeTournament || currentUser?.role !== 'ADMIN') return;
       if (!confirm("⚠️ ¿REINICIAR PARTIDO?\n\nSe borrará el resultado y el estado volverá a 'Programado'. Si hay un partido en vivo con este ID, se detendrá.")) return;
@@ -571,7 +569,6 @@ export const App: React.FC = () => {
 
       if (fixture) {
           const winnerId = winsA > winsB ? fixture.teamAId : (winsB > winsA ? fixture.teamBId : undefined);
-          // Update local fixture variable
           updatedFixtures = activeTournament.fixtures?.map(f => f.id === liveMatch.matchId ? { ...f, status: 'finished' as const, winnerId, resultString: `${winsA}-${winsB}` } : f) || [];
       }
 
@@ -604,13 +601,10 @@ export const App: React.FC = () => {
           return { ...team, players: updatedPlayers };
       });
       
-      // Update global teams pool
       updateTeams(updatedTeams);
-
-      // Perform ATOMIC update to tournament: Fixtures AND Teams (to prevent race conditions)
       updateActiveTournament({ 
           fixtures: updatedFixtures,
-          teams: updatedTeams // Important: Sync team stats to the tournament instance as well
+          teams: updatedTeams 
       });
 
       updateLiveMatch(null);
@@ -887,8 +881,6 @@ export const App: React.FC = () => {
           <Login 
             onLogin={(u) => { 
                 setCurrentUser(u); 
-                // Fix: Always attempt to init cloud if config exists
-                // This allows Viewers to see live data immediately
                 const saved = loadConfig();
                 if (saved?.config) {
                     initCloud(saved.config, saved.organizationId || '');
@@ -915,6 +907,7 @@ export const App: React.FC = () => {
             onBack={currentUser.role === 'VIEWER' ? () => { setCurrentView('dashboard'); setTvMode(false); } : undefined}
             onNextSet={handleStartNextSet}
             nextSetCountdown={nextSetCountdown}
+            // Pass the CLOUD STATE directly to ensure viewers see what admin controls
             showStatsOverlay={liveMatch.showStats}
             showScoreboard={liveMatch.showScoreboard}
             isCloudConnected={isCloudConnected}
@@ -932,7 +925,7 @@ export const App: React.FC = () => {
       isCloudConnected={isCloudConnected}
       onOpenCloudConfig={() => setShowCloudConfig(true)}
     >
-      {/* CLOUD CONFIG MODAL */}
+      {/* ... (Cloud Config, etc. same as before) ... */}
       {showCloudConfig && (
           <CloudConfig 
             onClose={() => setShowCloudConfig(false)}
@@ -943,9 +936,10 @@ export const App: React.FC = () => {
 
       {/* VIEWS */}
       
-      {/* 1. HOME VIEW */}
+      {/* ... (Home, Lobby, Dashboard, Teams, Users - same as before) ... */}
       {currentView === 'home' && (
          <div className="flex flex-col items-center justify-center min-h-[60vh] text-center space-y-8 animate-in fade-in zoom-in-95 duration-500">
+             {/* ... Home Content ... */}
              <div className="relative">
                  <div className="absolute -inset-4 bg-gradient-to-r from-blue-600 to-vnl-accent opacity-20 blur-xl rounded-full"></div>
                  <h1 className="relative text-5xl md:text-7xl font-black text-white italic tracking-tighter">
@@ -975,7 +969,6 @@ export const App: React.FC = () => {
          </div>
       )}
 
-      {/* 2. LOBBY VIEW (Tournaments List) */}
       {currentView === 'lobby' && (
           <div className="space-y-6 animate-in slide-in-from-right-4">
               <div className="flex justify-between items-center">
@@ -986,7 +979,6 @@ export const App: React.FC = () => {
                       </button>
                   )}
               </div>
-              
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {tournaments.map(t => (
                       <div key={t.id} onClick={() => { setActiveTournamentId(t.id); setCurrentView('dashboard'); }} className="bg-corp-panel border border-white/10 rounded-xl overflow-hidden hover:border-vnl-accent/50 transition cursor-pointer group">
@@ -1010,10 +1002,9 @@ export const App: React.FC = () => {
           </div>
       )}
 
-      {/* 3. DASHBOARD VIEW (Single Tournament) */}
       {currentView === 'dashboard' && activeTournament && (
           <div className="space-y-8 animate-in slide-in-from-right-4">
-               {/* Tournament Header */}
+               {/* ... Dashboard Header & Fixtures ... */}
                <div className="flex flex-col md:flex-row justify-between items-start md:items-end border-b border-white/10 pb-4 gap-4">
                    <div className="flex items-center gap-4">
                        <button onClick={() => setCurrentView('lobby')} className="text-slate-500 hover:text-white transition">← Volver</button>
@@ -1037,7 +1028,6 @@ export const App: React.FC = () => {
                    </div>
                </div>
 
-               {/* Fixture / Matches List */}
                <div className="grid gap-4">
                    {activeTournament.fixtures?.map((fix) => {
                        const teamA = activeTournament.teams.find(t => t.id === fix.teamAId);
@@ -1096,7 +1086,6 @@ export const App: React.FC = () => {
                                        </>
                                    )}
                                    
-                                   {/* Referee Specific Button */}
                                    {currentUser?.role === 'REFEREE' && (isLive || isFinished) && (
                                        <button 
                                             onClick={() => {
@@ -1113,7 +1102,6 @@ export const App: React.FC = () => {
                                        </button>
                                    )}
 
-                                   {/* Viewers/Others can watch live */}
                                    {(isLive || isFinished) && !isAdmin && currentUser?.role !== 'REFEREE' && (
                                         <button onClick={() => { setLiveMatch(liveMatch); setCurrentView('match'); setTvMode(true); }} className="bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded text-xs font-black uppercase tracking-widest border border-white/10 transition">
                                             {isLive ? '🔴 Ver en Vivo' : 'Ver Resultado'}
@@ -1145,6 +1133,8 @@ export const App: React.FC = () => {
                              {isAdmin && (
                                  <>
                                     <button onClick={openEditRules} className="bg-white/5 hover:bg-white/10 text-slate-300 px-3 py-1.5 rounded text-xs font-bold uppercase tracking-widest border border-white/10">Reglas</button>
+                                    
+                                    {/* Update these buttons to use Cloud State (liveMatch) */}
                                     <button 
                                         onClick={() => updateLiveMatch({...liveMatch, showScoreboard: !liveMatch.showScoreboard})} 
                                         className={`px-3 py-1.5 rounded text-xs font-bold uppercase tracking-widest border border-white/10 transition ${liveMatch.showScoreboard ? 'bg-green-600 text-white' : 'bg-black/40 text-slate-500'}`}
@@ -1157,6 +1147,7 @@ export const App: React.FC = () => {
                                     >
                                         Stats TV
                                     </button>
+                                    
                                     <button onClick={() => setTvMode(true)} className="bg-vnl-accent hover:bg-cyan-400 text-black px-3 py-1.5 rounded text-xs font-bold uppercase tracking-widest shadow">Vista TV 📺</button>
                                     <button onClick={handleEndBroadcast} className="bg-red-900/50 hover:bg-red-800 text-red-200 border border-red-500/30 px-3 py-1.5 rounded text-xs font-bold uppercase tracking-widest">Terminar</button>
                                  </>
@@ -1270,9 +1261,11 @@ export const App: React.FC = () => {
           </div>
       )}
       
-      {/* 4. TEAMS MANAGEMENT VIEW */}
+      {/* ... (Other views: Teams, Users, etc.) ... */}
       {currentView === 'teams' && (
           <div className="space-y-8 animate-in slide-in-from-right-4">
+               {/* ... */}
+               {/* Simplified for output - assume rest of component is same as previous ... */}
                <div className="flex justify-between items-center border-b border-white/10 pb-4">
                    <h2 className="text-3xl font-black text-white uppercase italic tracking-tighter">Gestión de <span className="text-vnl-accent">Equipos</span></h2>
                </div>
@@ -1341,7 +1334,6 @@ export const App: React.FC = () => {
           </div>
       )}
 
-      {/* 5. USERS VIEW */}
       {currentView === 'users' && (
           <UserManagement 
             users={users} 
@@ -1354,7 +1346,6 @@ export const App: React.FC = () => {
           />
       )}
 
-      {/* 6. STANDINGS VIEW */}
       {currentView === 'standings' && activeTournament && (
          <div className="space-y-6">
              <div className="flex items-center gap-4 border-b border-white/10 pb-4">
@@ -1365,7 +1356,6 @@ export const App: React.FC = () => {
          </div>
       )}
 
-      {/* 7. STATS VIEW */}
       {currentView === 'stats' && activeTournament && (
           <div className="space-y-6">
              <div className="flex items-center gap-4 border-b border-white/10 pb-4">
@@ -1376,9 +1366,7 @@ export const App: React.FC = () => {
           </div>
       )}
 
-      {/* MODALS */}
-      
-      {/* Set Stats Modal (Auto or Manual) */}
+      {/* MODALS (Stats, Create Tourney, Config, Sub, Rotation, Profile) ... */}
       {viewingSetStats && activeTournament && (
           <SetStatsModal 
               setNumber={viewingSetStats.setNum}
@@ -1391,21 +1379,15 @@ export const App: React.FC = () => {
           />
       )}
       
-      {/* ... (Existing Modals remain unchanged) ... */}
-      
-      {/* Create Tournament Modal */}
       {showCreateTourneyModal && (
           <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4 backdrop-blur-md">
               <div className="bg-vnl-panel border border-white/20 p-6 w-full max-w-lg shadow-[0_0_50px_rgba(6,182,212,0.2)]">
                   <h3 className="text-xl font-black text-white uppercase italic tracking-tighter mb-6 border-b border-white/10 pb-2">Nuevo Torneo</h3>
                   <div className="space-y-4">
-                      {/* ... (Create Tournament Content) ... */}
                       <div>
                           <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Nombre</label>
                           <input value={newTourneyData.name} onChange={e => setNewTourneyData({...newTourneyData, name: e.target.value})} className="w-full p-3 bg-black/40 border border-white/10 text-white font-bold focus:border-vnl-accent outline-none" placeholder="Ej: Copa Verano 2024" />
                       </div>
-                      
-                      {/* LOGO UPLOAD SECTION */}
                       <div>
                           <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Logo del Torneo (Opcional)</label>
                           <div className="flex gap-4 items-center">
@@ -1471,7 +1453,6 @@ export const App: React.FC = () => {
           </div>
       )}
 
-      {/* Match Config Modal (Pre-Match or Edit Rules) */}
       {showMatchConfigModal && activeTournament && (
           <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4 backdrop-blur-md">
               <div className="bg-vnl-panel border border-white/20 p-6 w-full max-w-md shadow-2xl">
@@ -1504,7 +1485,6 @@ export const App: React.FC = () => {
           </div>
       )}
 
-      {/* Substitution Modal */}
       {showSubModal && liveMatch && activeTournament && (
           <div className="fixed inset-0 bg-black/80 z-[60] flex items-center justify-center p-4 backdrop-blur-sm">
               <div className="bg-vnl-panel border border-white/20 p-6 w-full max-w-sm shadow-2xl">
@@ -1540,7 +1520,6 @@ export const App: React.FC = () => {
           </div>
       )}
       
-      {/* Rotation Editor Modal */}
       {showRotationModal && liveMatch && (
           <div className="fixed inset-0 bg-black/80 z-[60] flex items-center justify-center p-4 backdrop-blur-sm">
               <div className="bg-vnl-panel border border-white/20 p-6 w-full max-w-md shadow-2xl">
@@ -1570,15 +1549,12 @@ export const App: React.FC = () => {
           </div>
       )}
 
-      {/* Player Profile Editor */}
       {editingPlayer && currentUser && (
           <ProfileEditor 
             player={editingPlayer} 
             currentUser={currentUser}
             onClose={() => setEditingPlayer(null)}
             onSave={(updated) => {
-                // Determine which team this player belongs to
-                // We must update registeredTeams state
                 const newTeams = registeredTeams.map(t => {
                     const pIndex = t.players.findIndex(p => p.id === updated.id);
                     if (pIndex !== -1) {
