@@ -1,4 +1,3 @@
-
 import React, { useEffect, useRef, useState } from 'react';
 import { LiveMatchState, Team, Tournament, User } from '../types';
 
@@ -73,7 +72,7 @@ export const TVOverlay: React.FC<TVOverlayProps> = ({
         
         return () => { clearTimeout(updateTimer); clearTimeout(endTimer); };
     }
-  }, [showScoreboard, showStatsOverlay]); // Only depend on props changing
+  }, [showScoreboard, showStatsOverlay, visibleScoreboard, visibleStats]);
 
   // Enumerate Devices on Mount (Admin Only)
   useEffect(() => {
@@ -528,4 +527,72 @@ export const TVOverlay: React.FC<TVOverlayProps> = ({
       ) : (
           /* --- SCOREBOARD (RESPONSIVE VERTICAL/HORIZONTAL) --- */
           visibleScoreboard && !isPreMatch && (
-            <
+            <div className="relative z-10 w-full max-w-6xl mx-auto px-2 md:px-4 animate-in slide-in-from-top-5 duration-500 transition-all absolute top-20 md:bottom-6 md:top-auto">
+                <div className="flex items-stretch h-16 md:h-20 shadow-[0_10px_30px_rgba(0,0,0,0.5)] rounded-lg overflow-hidden border border-white/10">
+                    
+                    {/* Team A Section */}
+                    <div className="flex-1 bg-gradient-to-r from-blue-900 to-blue-800 flex items-center justify-between px-2 md:px-4 relative">
+                        {match.servingTeamId === teamA.id && (
+                            <div className="absolute inset-0 flex items-center justify-start pl-1 opacity-20 pointer-events-none">
+                                <span className="text-4xl">🏐</span>
+                            </div>
+                        )}
+                        <div className="flex items-center gap-2 md:gap-3 z-10">
+                            <div className="w-8 h-8 md:w-12 md:h-12 bg-white rounded p-1 shadow-md relative">
+                                {teamA.logoUrl ? <img src={teamA.logoUrl} className="w-full h-full object-contain" /> : <div className="text-blue-900 font-bold text-lg md:text-xl flex items-center justify-center h-full">{teamA.name[0]}</div>}
+                                {match.servingTeamId === teamA.id && <div className="absolute -top-1 -left-1 text-lg bg-white rounded-full leading-none shadow-sm border border-slate-200">🏐</div>}
+                            </div>
+                            <div className="flex flex-col">
+                                <h2 className="text-white font-black uppercase italic tracking-tighter text-sm md:text-xl leading-none">{teamA.name}</h2>
+                                <div className="flex gap-1 mt-1">
+                                    {sets.filter(s => s.scoreA > s.scoreB && Math.max(s.scoreA, s.scoreB) >= (match.currentSet === match.config.maxSets ? match.config.tieBreakPoints : match.config.pointsPerSet)).map((_,i) => (
+                                        <div key={i} className="w-2 h-2 md:w-3 md:h-3 bg-yellow-400 rounded-full border border-yellow-600"></div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                        <div className="text-3xl md:text-5xl font-black text-white tabular-nums tracking-tighter drop-shadow-md z-10 pl-2">
+                            {match.scoreA}
+                        </div>
+                    </div>
+
+                    {/* Center Info */}
+                    <div className="w-12 md:w-24 bg-black/90 flex flex-col items-center justify-center border-x border-white/10 z-10 relative">
+                        <div className="text-[9px] md:text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-0.5">Set {match.currentSet}</div>
+                        <div className={`text-[10px] md:text-xs font-bold text-white px-1 md:px-2 rounded ${isSetFinished ? 'bg-yellow-500 text-black' : 'bg-red-600 animate-pulse'}`}>
+                            {isSetFinished ? 'FIN' : 'LIVE'}
+                        </div>
+                    </div>
+
+                    {/* Team B Section */}
+                    <div className="flex-1 bg-gradient-to-l from-red-900 to-red-800 flex items-center justify-between px-2 md:px-4 relative flex-row-reverse">
+                         {match.servingTeamId === teamB.id && (
+                            <div className="absolute inset-0 flex items-center justify-end pr-1 opacity-20 pointer-events-none">
+                                <span className="text-4xl">🏐</span>
+                            </div>
+                         )}
+                        <div className="flex items-center gap-2 md:gap-3 flex-row-reverse z-10">
+                            <div className="w-8 h-8 md:w-12 md:h-12 bg-white rounded p-1 shadow-md relative">
+                                {teamB.logoUrl ? <img src={teamB.logoUrl} className="w-full h-full object-contain" /> : <div className="text-red-900 font-bold text-lg md:text-xl flex items-center justify-center h-full">{teamB.name[0]}</div>}
+                                {match.servingTeamId === teamB.id && <div className="absolute -top-1 -right-1 text-lg bg-white rounded-full leading-none shadow-sm border border-slate-200">🏐</div>}
+                            </div>
+                            <div className="flex flex-col items-end">
+                                <h2 className="text-white font-black uppercase italic tracking-tighter text-sm md:text-xl leading-none text-right">{teamB.name}</h2>
+                                <div className="flex gap-1 mt-1 justify-end">
+                                    {sets.filter(s => s.scoreB > s.scoreA && Math.max(s.scoreA, s.scoreB) >= (match.currentSet === match.config.maxSets ? match.config.tieBreakPoints : match.config.pointsPerSet)).map((_,i) => (
+                                        <div key={i} className="w-2 h-2 md:w-3 md:h-3 bg-yellow-400 rounded-full border border-yellow-600"></div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                        <div className="text-3xl md:text-5xl font-black text-white tabular-nums tracking-tighter drop-shadow-md z-10 pr-2">
+                            {match.scoreB}
+                        </div>
+                    </div>
+                </div>
+            </div>
+          )
+      )}
+    </div>
+  );
+};
