@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Layout } from './components/Layout';
 import { Court } from './components/Court';
@@ -61,7 +62,6 @@ export const App: React.FC = () => {
   
   // UI States
   const [tvMode, setTvMode] = useState(false);
-  // Removed local stats/scoreboard state to use liveMatch (Cloud) state
   const [editingPlayer, setEditingPlayer] = useState<Player | null>(null);
   const [loading, setLoading] = useState(false);
   const [viewingSetStats, setViewingSetStats] = useState<{setNum: number, data: MatchSet} | null>(null);
@@ -135,7 +135,7 @@ export const App: React.FC = () => {
           if (typeof val === 'object') return Object.values(val);
           return [];
       };
-      const unsubUsers = syncData<any>('users', (val) => {
+      const unsubUsers = syncData<any>('users', (val: any) => {
           const loadedUsers = normalizeArray<User>(val);
           if (loadedUsers.length > 0) {
               setUsers(loadedUsers);
@@ -144,9 +144,9 @@ export const App: React.FC = () => {
               pushData('users', [DEFAULT_ADMIN]);
           }
       });
-      const unsubTeams = syncData<any>('teams', (val) => setRegisteredTeams(normalizeArray<Team>(val)));
-      const unsubTourneys = syncData<any>('tournaments', (val) => setTournaments(normalizeArray<Tournament>(val)));
-      const unsubLive = syncData<LiveMatchState | null>('liveMatch', (val) => setLiveMatch(val));
+      const unsubTeams = syncData<any>('teams', (val: any) => setRegisteredTeams(normalizeArray<Team>(val)));
+      const unsubTourneys = syncData<any>('tournaments', (val: any) => setTournaments(normalizeArray<Tournament>(val)));
+      const unsubLive = syncData<LiveMatchState | null>('liveMatch', (val: LiveMatchState | null) => setLiveMatch(val));
       return () => { unsubUsers(); unsubTeams(); unsubTourneys(); unsubLive(); };
   }, [isCloudConnected]);
 
@@ -154,7 +154,6 @@ export const App: React.FC = () => {
   useEffect(() => {
       if (liveMatch && tournaments.length > 0) {
           // Fix: Automatically select the active tournament for ALL users (Admin & Viewer)
-          // This prevents the match view from disappearing on page refresh for Admins
           if (!activeTournamentId || activeTournamentId !== tournaments.find(t => t.fixtures?.some(f => f.id === liveMatch.matchId))?.id) {
                const foundT = tournaments.find(t => t.fixtures?.some(f => f.id === liveMatch.matchId));
                if (foundT) {
@@ -884,8 +883,10 @@ export const App: React.FC = () => {
   if (!currentUser) {
       return (
           <Login 
-            onLogin={(u) => { 
+            onLogin={(u: User) => { 
                 setCurrentUser(u); 
+                // Fix: Always attempt to init cloud if config exists
+                // This allows Viewers to see live data immediately
                 const saved = loadConfig();
                 if (saved?.config) {
                     initCloud(saved.config, saved.organizationId || '');
@@ -1143,6 +1144,8 @@ export const App: React.FC = () => {
                              {isAdmin && (
                                  <>
                                     <button onClick={openEditRules} className="bg-white/5 hover:bg-white/10 text-slate-300 px-3 py-1.5 rounded text-xs font-bold uppercase tracking-widest border border-white/10">Reglas</button>
+                                    
+                                    {/* Update these buttons to use Cloud State (liveMatch) */}
                                     <button 
                                         onClick={() => updateLiveMatch({...liveMatch, showScoreboard: !liveMatch.showScoreboard})} 
                                         className={`px-3 py-1.5 rounded text-xs font-bold uppercase tracking-widest border border-white/10 transition ${liveMatch.showScoreboard ? 'bg-green-600 text-white' : 'bg-black/40 text-slate-500'}`}
@@ -1155,6 +1158,7 @@ export const App: React.FC = () => {
                                     >
                                         Stats TV
                                     </button>
+                                    
                                     <button onClick={() => setTvMode(true)} className="bg-vnl-accent hover:bg-cyan-400 text-black px-3 py-1.5 rounded text-xs font-bold uppercase tracking-widest shadow">Vista TV 📺</button>
                                     <button onClick={handleEndBroadcast} className="bg-red-900/50 hover:bg-red-800 text-red-200 border border-red-500/30 px-3 py-1.5 rounded text-xs font-bold uppercase tracking-widest">Terminar</button>
                                  </>
@@ -1271,6 +1275,8 @@ export const App: React.FC = () => {
       {/* 4. TEAMS MANAGEMENT VIEW */}
       {currentView === 'teams' && (
           <div className="space-y-8 animate-in slide-in-from-right-4">
+               {/* ... */}
+               {/* Simplified for output - assume rest of component is same as previous ... */}
                <div className="flex justify-between items-center border-b border-white/10 pb-4">
                    <h2 className="text-3xl font-black text-white uppercase italic tracking-tighter">Gestión de <span className="text-vnl-accent">Equipos</span></h2>
                </div>
@@ -1339,7 +1345,6 @@ export const App: React.FC = () => {
           </div>
       )}
 
-      {/* 5. USERS VIEW */}
       {currentView === 'users' && (
           <UserManagement 
             users={users} 
@@ -1352,7 +1357,6 @@ export const App: React.FC = () => {
           />
       )}
 
-      {/* 6. STANDINGS VIEW */}
       {currentView === 'standings' && activeTournament && (
          <div className="space-y-6">
              <div className="flex items-center gap-4 border-b border-white/10 pb-4">
@@ -1363,7 +1367,6 @@ export const App: React.FC = () => {
          </div>
       )}
 
-      {/* 7. STATS VIEW */}
       {currentView === 'stats' && activeTournament && (
           <div className="space-y-6">
              <div className="flex items-center gap-4 border-b border-white/10 pb-4">
@@ -1535,7 +1538,6 @@ export const App: React.FC = () => {
           </div>
       )}
       
-      {/* Rotation Editor Modal */}
       {showRotationModal && liveMatch && (
           <div className="fixed inset-0 bg-black/80 z-[60] flex items-center justify-center p-4 backdrop-blur-sm">
               <div className="bg-vnl-panel border border-white/20 p-6 w-full max-w-md shadow-2xl">
@@ -1570,7 +1572,7 @@ export const App: React.FC = () => {
             player={editingPlayer} 
             currentUser={currentUser}
             onClose={() => setEditingPlayer(null)}
-            onSave={(updated) => {
+            onSave={(updated: Player) => {
                 // Determine which team this player belongs to
                 // We must update registeredTeams state
                 const newTeams = registeredTeams.map(t => {
