@@ -410,7 +410,7 @@ export const TVOverlay: React.FC<TVOverlayProps> = ({
 
       {/* --- TOURNAMENT LOGO (TOP RIGHT) --- */}
       {tournament?.logoUrl && (
-          <div className="absolute top-4 right-4 landscape:top-2 landscape:right-2 z-40 landscape:scale-75 origin-top-right transition-all pointer-events-none">
+          <div className="absolute top-4 right-4 landscape:top-2 landscape:right-2 portrait:top-16 portrait:right-4 z-40 landscape:scale-75 portrait:scale-90 origin-top-right transition-all pointer-events-none">
               <img 
                 src={tournament.logoUrl} 
                 alt="Torneo" 
@@ -421,7 +421,7 @@ export const TVOverlay: React.FC<TVOverlayProps> = ({
 
       {/* TikTok Live Button - Admin Only */}
       {canUseTikTok && (
-        <div className="absolute top-36 right-6 landscape:top-24 landscape:right-4 flex flex-col items-center gap-4 opacity-100 z-20 transition-all">
+        <div className="absolute top-36 right-6 landscape:top-24 landscape:right-4 portrait:bottom-24 portrait:right-4 portrait:top-auto flex flex-col items-center gap-4 opacity-100 z-20 transition-all">
            <button 
              onClick={handleTikTokLive}
              className="flex flex-col items-center gap-2 group hover:scale-105 transition"
@@ -549,13 +549,28 @@ export const TVOverlay: React.FC<TVOverlayProps> = ({
       ) : (
           /* --- SCOREBOARD (RESPONSIVE VERTICAL/HORIZONTAL) --- */
           visibleScoreboard && !isPreMatch && (
-            <div className={`relative z-10 w-full mx-auto px-2 md:px-4 animate-in slide-in-from-top-5 duration-500 transition-all absolute ${isVertical ? 'top-32 max-w-sm' : 'top-20 md:bottom-6 md:top-auto max-w-6xl'}`}>
-                <div className={`flex items-stretch shadow-[0_10px_30px_rgba(0,0,0,0.5)] rounded-lg overflow-hidden border border-white/10 ${isVertical ? 'flex-col h-auto' : 'h-16 md:h-20'}`}>
+            <div className={`relative z-10 w-full mx-auto px-2 md:px-4 animate-in slide-in-from-top-5 duration-500 transition-all absolute 
+                ${isVertical ? 'top-32 max-w-sm' : 'top-20 md:bottom-6 md:top-auto max-w-6xl'}
+                landscape:top-auto landscape:bottom-6 landscape:max-w-6xl landscape:w-full
+                portrait:top-32 portrait:max-w-sm portrait:w-full
+            `}>
+                <div className={`flex items-stretch shadow-[0_10px_30px_rgba(0,0,0,0.5)] rounded-lg overflow-hidden border border-white/10 
+                    ${isVertical ? 'flex-col h-auto' : 'h-16 md:h-20'}
+                    landscape:flex-row landscape:h-16 landscape:md:h-20
+                    portrait:flex-col portrait:h-auto
+                `}>
                     
                     {/* Team A Section */}
-                    <div className={`flex-1 bg-gradient-to-r from-blue-900 to-blue-800 flex items-center justify-between relative ${isVertical ? 'p-3 border-b border-white/10' : 'px-2 md:px-4'}`}>
+                    <div className={`flex-1 bg-gradient-to-r from-blue-900 to-blue-800 flex items-center justify-between relative 
+                        ${isVertical ? 'p-3 border-b border-white/10' : 'px-2 md:px-4'}
+                        landscape:px-4 landscape:border-b-0 landscape:flex-row
+                        portrait:p-3 portrait:border-b portrait:border-white/10
+                    `}>
                         {match.servingTeamId === teamA.id && (
-                            <div className={`absolute inset-0 flex items-center justify-start opacity-20 pointer-events-none ${isVertical ? 'pl-4' : 'pl-1'}`}>
+                            <div className={`absolute inset-0 flex items-center justify-start opacity-20 pointer-events-none 
+                                ${isVertical ? 'pl-4' : 'pl-1'}
+                                landscape:pl-1 portrait:pl-4
+                            `}>
                                 <span className="text-4xl">🏐</span>
                             </div>
                         )}
@@ -579,7 +594,11 @@ export const TVOverlay: React.FC<TVOverlayProps> = ({
                     </div>
 
                     {/* Center Info */}
-                    <div className={`bg-black/90 flex flex-col items-center justify-center border-x border-white/10 z-10 relative ${isVertical ? 'py-1' : 'w-12 md:w-24'}`}>
+                    <div className={`bg-black/90 flex flex-col items-center justify-center border-x border-white/10 z-10 relative 
+                        ${isVertical ? 'py-1' : 'w-12 md:w-24'}
+                        landscape:w-24 landscape:py-0
+                        portrait:w-full portrait:py-1
+                    `}>
                         <div className="text-[9px] md:text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-0.5">Set {match.currentSet}</div>
                         <div className={`text-[10px] md:text-xs font-bold text-white px-1 md:px-2 rounded ${isSetFinished ? 'bg-yellow-500 text-black' : 'bg-red-600 animate-pulse'}`}>
                             {isSetFinished ? 'FIN' : 'LIVE'}
@@ -587,27 +606,48 @@ export const TVOverlay: React.FC<TVOverlayProps> = ({
                     </div>
 
                     {/* Team B Section */}
-                    <div className={`flex-1 bg-gradient-to-l from-red-900 to-red-800 flex items-center justify-between relative ${isVertical ? 'p-3 flex-row border-t border-white/10' : 'px-2 md:px-4 flex-row-reverse'}`}>
+                    <div className={`flex-1 bg-gradient-to-l from-red-900 to-red-800 flex items-center justify-between relative 
+                        ${isVertical ? 'p-3 flex-row border-t border-white/10' : 'px-2 md:px-4 flex-row-reverse'}
+                        landscape:px-4 landscape:flex-row-reverse landscape:border-t-0
+                        portrait:p-3 portrait:flex-row portrait:border-t portrait:border-white/10
+                    `}>
                          {match.servingTeamId === teamB.id && (
-                            <div className={`absolute inset-0 flex items-center justify-end opacity-20 pointer-events-none ${isVertical ? 'pr-4' : 'pr-1'}`}>
+                            <div className={`absolute inset-0 flex items-center justify-end opacity-20 pointer-events-none 
+                                ${isVertical ? 'pr-4' : 'pr-1'}
+                                landscape:pr-1 portrait:pr-4
+                            `}>
                                 <span className="text-4xl">🏐</span>
                             </div>
                          )}
-                        <div className={`flex items-center gap-2 md:gap-3 z-10 ${isVertical ? '' : 'flex-row-reverse'}`}>
+                        <div className={`flex items-center gap-2 md:gap-3 z-10 
+                            ${isVertical ? '' : 'flex-row-reverse'}
+                            landscape:flex-row-reverse portrait:flex-row
+                        `}>
                             <div className="w-8 h-8 md:w-12 md:h-12 bg-white rounded p-1 shadow-md relative">
                                 {teamB.logoUrl ? <img src={teamB.logoUrl} className="w-full h-full object-contain" /> : <div className="text-red-900 font-bold text-lg md:text-xl flex items-center justify-center h-full">{teamB.name[0]}</div>}
                                 {match.servingTeamId === teamB.id && <div className="absolute -top-1 -right-1 text-lg bg-white rounded-full leading-none shadow-sm border border-slate-200">🏐</div>}
                             </div>
-                            <div className={`flex flex-col ${isVertical ? '' : 'items-end'}`}>
-                                <h2 className={`text-white font-black uppercase italic tracking-tighter text-sm md:text-xl leading-none ${isVertical ? '' : 'text-right'}`}>{teamB.name}</h2>
-                                <div className={`flex gap-1 mt-1 ${isVertical ? '' : 'justify-end'}`}>
+                            <div className={`flex flex-col 
+                                ${isVertical ? '' : 'items-end'}
+                                landscape:items-end portrait:items-start
+                            `}>
+                                <h2 className={`text-white font-black uppercase italic tracking-tighter text-sm md:text-xl leading-none 
+                                    ${isVertical ? '' : 'text-right'}
+                                    landscape:text-right portrait:text-left
+                                `}>{teamB.name}</h2>
+                                <div className={`flex gap-1 mt-1 
+                                    ${isVertical ? '' : 'justify-end'}
+                                    landscape:justify-end portrait:justify-start
+                                `}>
                                     {sets.filter(s => s.scoreB > s.scoreA && Math.max(s.scoreA, s.scoreB) >= (match.currentSet === match.config.maxSets ? match.config.tieBreakPoints : match.config.pointsPerSet)).map((_,i) => (
                                         <div key={i} className="w-2 h-2 md:w-3 md:h-3 bg-yellow-400 rounded-full border border-yellow-600"></div>
                                     ))}
                                 </div>
                             </div>
                         </div>
-                        <div className={`text-3xl md:text-5xl font-black text-white tabular-nums tracking-tighter drop-shadow-md z-10 ${isVertical ? 'pr-2' : 'pr-2'}`}>
+                        <div className={`text-3xl md:text-5xl font-black text-white tabular-nums tracking-tighter drop-shadow-md z-10 
+                            ${isVertical ? 'pr-2' : 'pr-2'}
+                        `}>
                             {match.scoreB}
                         </div>
                     </div>

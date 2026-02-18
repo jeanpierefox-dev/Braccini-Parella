@@ -1078,8 +1078,8 @@ export const App: React.FC = () => {
                                    </div>
                                </div>
 
-                               <div className="w-full md:w-1/3 flex justify-end gap-2">
-                                   {isAdmin && (
+                                <div className="w-full md:w-1/3 flex justify-end gap-2">
+                                   {canControlMatch && (
                                        <>
                                          {isLive ? (
                                              <button onClick={() => handleInitiateMatch(fix.id, 'control')} className="bg-green-600 hover:bg-green-500 text-white px-4 py-2 rounded text-xs font-black uppercase tracking-widest shadow-lg transition animate-pulse">
@@ -1115,7 +1115,7 @@ export const App: React.FC = () => {
                                    )}
 
                                    {/* Viewers/Others can watch live */}
-                                   {(isLive || isFinished) && !isAdmin && currentUser?.role !== 'REFEREE' && (
+                                   {(isLive || isFinished) && !canControlMatch && currentUser?.role !== 'REFEREE' && (
                                         <button onClick={() => { setLiveMatch(liveMatch); setCurrentView('match'); setTvMode(true); }} className="bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded text-xs font-black uppercase tracking-widest border border-white/10 transition">
                                             {isLive ? '🔴 Ver en Vivo' : 'Ver Resultado'}
                                         </button>
