@@ -43,6 +43,11 @@ export const App: React.FC = () => {
   // --- STATE ---
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const isAdmin = currentUser?.role === 'ADMIN';
+  const isMainReferee = currentUser?.role === 'MAIN_REFEREE';
+  // Privilege Check for Match Control (Admin or Main Referee)
+  const canControlMatch = isAdmin || isMainReferee;
+  // Privilege Check for Broadcasting (Admin Only)
+  const canBroadcast = isAdmin;
   
   // Navigation
   const [currentView, setCurrentView] = useState('home'); 
@@ -61,8 +66,6 @@ export const App: React.FC = () => {
   
   // UI States
   const [tvMode, setTvMode] = useState(false);
-  const [showStatsOnTV, setShowStatsOnTV] = useState(false); 
-  const [showScoreboardOnTV, setShowScoreboardOnTV] = useState(true); 
   const [editingPlayer, setEditingPlayer] = useState<Player | null>(null);
   const [loading, setLoading] = useState(false);
   const [viewingSetStats, setViewingSetStats] = useState<{setNum: number, data: MatchSet} | null>(null);
@@ -348,7 +351,7 @@ export const App: React.FC = () => {
           setCurrentView('match'); 
           return; 
       }
-      if (currentUser?.role === 'ADMIN' || currentUser?.role.includes('COACH') || currentUser?.role === 'REFEREE') {
+      if (canControlMatch || currentUser?.role.includes('COACH') || currentUser?.role === 'REFEREE') {
           // Referee enters directly without config modal if match is already live, or waits if not
           if (currentUser.role === 'REFEREE') {
               // If match is not live, referee cannot start it (only ADMIN/COACH starts via config)
@@ -556,7 +559,7 @@ export const App: React.FC = () => {
   };
 
   const handleEndBroadcast = async () => {
-      if (!liveMatch || !activeTournament || currentUser?.role !== 'ADMIN') return;
+      if (!liveMatch || !activeTournament || !canControlMatch) return;
       if (!confirm("¿Confirmar y Guardar Resultado Final?")) return;
       
       const sets = liveMatch.sets || [];
@@ -730,7 +733,7 @@ export const App: React.FC = () => {
   };
 
   const handleSubtractPoint = (teamId: string) => {
-    if (!liveMatch || !activeTournament || !isAdmin) return;
+    if (!liveMatch || !activeTournament || !canControlMatch) return;
     const fixture = activeTournament.fixtures?.find(f => f.id === liveMatch.matchId)!;
     const isTeamA = teamId === fixture.teamAId;
 
@@ -765,7 +768,7 @@ export const App: React.FC = () => {
 
   const handleRequestTimeout = (teamId: string) => {
     if (!liveMatch) return;
-    if (currentUser?.role === 'ADMIN') {
+    if (canControlMatch) {
        updateLiveMatch(prev => {
            if (!prev) return null;
            const fixture = activeTournament?.fixtures?.find(f => f.id === prev.matchId);
@@ -912,8 +915,9 @@ export const App: React.FC = () => {
             onBack={currentUser.role === 'VIEWER' ? () => { setCurrentView('dashboard'); setTvMode(false); } : undefined}
             onNextSet={handleStartNextSet}
             nextSetCountdown={nextSetCountdown}
-            showStatsOverlay={showStatsOnTV}
-            showScoreboard={showScoreboardOnTV}
+            // PASS CLOUD STATE TO OVERLAY
+            showStatsOverlay={liveMatch.showStats}
+            showScoreboard={liveMatch.showScoreboard}
             isCloudConnected={isCloudConnected}
           />
       );
@@ -1129,24 +1133,44 @@ export const App: React.FC = () => {
           <div className="relative min-h-[85vh]">
                 <div className="space-y-4 pb-20">
                      {/* Control Bar */}
-                     <div className="flex justify-between items-center bg-black/40 p-4 border-b border-white/10 rounded-t-xl backdrop-blur-md sticky top-16 z-30">
+                     <div className="flex justify-between items-center bg-slate-900/90 p-4 border-b border-white/10 rounded-t-xl backdrop-blur-md sticky top-16 z-30 shadow-lg">
                          <div className="flex items-center gap-4">
                              <button onClick={() => setCurrentView('dashboard')} className="text-slate-400 hover:text-white font-bold text-xs uppercase tracking-widest">← Panel</button>
                              <div className="h-6 w-px bg-white/10"></div>
-                             <span className="text-white font-black uppercase italic tracking-tighter text-lg">{activeTournament.name}</span>
+                             <span className="text-white font-bold uppercase tracking-tight text-lg">{activeTournament.name}</span>
                              <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-widest ${liveMatch.status === 'playing' ? 'bg-red-600 text-white animate-pulse' : 'bg-slate-700 text-slate-300'}`}>
                                  {liveMatch.status === 'warmup' ? 'Calentamiento' : liveMatch.status === 'finished_set' ? 'Set Finalizado' : liveMatch.status === 'finished' ? 'Partido Finalizado' : 'En Vivo'}
                              </span>
                          </div>
                          <div className="flex gap-2">
-                             {isAdmin && (
+                             {canControlMatch && (
                                  <>
                                     <button onClick={openEditRules} className="bg-white/5 hover:bg-white/10 text-slate-300 px-3 py-1.5 rounded text-xs font-bold uppercase tracking-widest border border-white/10">Reglas</button>
-                                    <button onClick={() => setShowScoreboardOnTV(!showScoreboardOnTV)} className={`px-3 py-1.5 rounded text-xs font-bold uppercase tracking-widest border border-white/10 transition ${showScoreboardOnTV ? 'bg-green-600 text-white' : 'bg-black/40 text-slate-500'}`}>Tablero</button>
-                                    <button onClick={() => setShowStatsOnTV(!showStatsOnTV)} className={`px-3 py-1.5 rounded text-xs font-bold uppercase tracking-widest border border-white/10 transition ${showStatsOnTV ? 'bg-blue-600 text-white' : 'bg-black/40 text-slate-500'}`}>Stats TV</button>
-                                    <button onClick={() => setTvMode(true)} className="bg-vnl-accent hover:bg-cyan-400 text-black px-3 py-1.5 rounded text-xs font-bold uppercase tracking-widest shadow">Vista TV 📺</button>
-                                    <button onClick={handleEndBroadcast} className="bg-red-900/50 hover:bg-red-800 text-red-200 border border-red-500/30 px-3 py-1.5 rounded text-xs font-bold uppercase tracking-widest">Terminar</button>
+                                    
+                                    {/* BUTTONS NOW UPDATE CLOUD STATE */}
+                                    <button 
+                                        onClick={() => updateLiveMatch(prev => prev ? {...prev, showScoreboard: !prev.showScoreboard} : null)} 
+                                        className={`px-3 py-1.5 rounded text-xs font-bold uppercase tracking-widest border border-white/10 transition ${liveMatch.showScoreboard ? 'bg-green-600 text-white' : 'bg-black/20 text-slate-500'}`}
+                                    >
+                                        Tablero
+                                    </button>
+                                    <button 
+                                        onClick={() => updateLiveMatch(prev => prev ? {...prev, showStats: !prev.showStats} : null)} 
+                                        className={`px-3 py-1.5 rounded text-xs font-bold uppercase tracking-widest border border-white/10 transition ${liveMatch.showStats ? 'bg-blue-600 text-white' : 'bg-black/20 text-slate-500'}`}
+                                    >
+                                        Stats TV
+                                    </button>
+                                    
+                                    {canBroadcast && (
+                                        <button onClick={() => setTvMode(true)} className="bg-corp-accent hover:bg-corp-accent-hover text-white px-3 py-1.5 rounded text-xs font-bold uppercase tracking-widest shadow">Vista TV 📺</button>
+                                    )}
+                                    <button onClick={handleEndBroadcast} className="bg-red-900/20 hover:bg-red-900/40 text-red-400 border border-red-500/20 px-3 py-1.5 rounded text-xs font-bold uppercase tracking-widest">Terminar</button>
                                  </>
+                             )}
+                             {currentUser.role === 'REFEREE' && (
+                                 <div className="bg-yellow-500/10 border border-yellow-500/30 text-yellow-400 px-3 py-1 rounded text-xs font-bold uppercase tracking-widest flex items-center gap-2">
+                                     <span>⚖️</span> Modo Árbitro de Piso
+                                 </div>
                              )}
                          </div>
                      </div>

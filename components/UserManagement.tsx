@@ -117,6 +117,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({ users, teams, cu
                   {isSuperAdmin ? (
                       <>
                         <option value="ADMIN">Administrador</option>
+                        <option value="MAIN_REFEREE">Árbitro General (Control)</option>
                         <option value="REFEREE">Árbitro de Piso (Rotaciones)</option>
                         <option value="COACH_A">Entrenador (Coach)</option>
                         <option value="PLAYER">Jugador</option>

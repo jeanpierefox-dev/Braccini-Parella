@@ -122,6 +122,8 @@ export interface LiveMatchState {
   substitutionsB: number;
   requests: RequestItem[]; // Requests from coaches
   showLeaderboard?: boolean;
+  showStats?: boolean;     // Sync TV state
+  showScoreboard?: boolean;// Sync TV state
 }
 
 export interface RequestItem {
@@ -135,7 +137,7 @@ export interface RequestItem {
   status: 'pending' | 'approved' | 'rejected';
 }
 
-export type UserRole = 'ADMIN' | 'COACH_A' | 'COACH_B' | 'PLAYER' | 'VIEWER' | 'REFEREE';
+export type UserRole = 'ADMIN' | 'COACH_A' | 'COACH_B' | 'PLAYER' | 'VIEWER' | 'REFEREE' | 'MAIN_REFEREE';
 
 export interface User {
   id: string;

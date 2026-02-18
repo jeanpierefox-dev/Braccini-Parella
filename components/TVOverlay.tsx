@@ -54,6 +54,10 @@ export const TVOverlay: React.FC<TVOverlayProps> = ({
   // Determine if set is finished
   const isSetFinished = match.status === 'finished_set';
 
+  // Broadcast Settings
+  const [aspectRatio, setAspectRatio] = useState<'16:9' | '9:16'>('16:9');
+  const isVertical = aspectRatio === '9:16';
+
   // Handle Transitions ("Stinger Effect")
   useEffect(() => {
     if (showScoreboard !== visibleScoreboard || showStatsOverlay !== visibleStats) {
@@ -336,22 +340,44 @@ export const TVOverlay: React.FC<TVOverlayProps> = ({
                   </div>
               )}
               
-              {/* Camera Selector Dropdown */}
+              {/* Camera Selector & Broadcast Settings Dropdown */}
               {showSettings && !isViewer && (
-                  <div className="bg-black/90 backdrop-blur-xl p-3 rounded-lg border border-white/20 mt-1 max-w-[240px] shadow-2xl animate-in slide-in-from-top-2">
-                      <label className="block text-[9px] font-black text-slate-400 uppercase mb-2 tracking-widest">Seleccionar Cámara</label>
-                      <select 
-                         value={selectedDeviceId}
-                         onChange={(e) => { setSelectedDeviceId(e.target.value); setCameraError(null); }}
-                         className="w-full bg-white/10 text-white text-[10px] p-2 rounded outline-none border border-white/10 focus:border-corp-accent"
-                      >
-                          {videoDevices.length === 0 && <option value="">Detectando...</option>}
-                          {videoDevices.map(device => (
-                              <option key={device.deviceId} value={device.deviceId}>
-                                  {device.label || `Cámara ${device.deviceId.slice(0, 5)}...`}
-                              </option>
-                          ))}
-                      </select>
+                  <div className="bg-black/90 backdrop-blur-xl p-3 rounded-lg border border-white/20 mt-1 max-w-[240px] shadow-2xl animate-in slide-in-from-top-2 space-y-4">
+                      {/* Camera Select */}
+                      <div>
+                          <label className="block text-[9px] font-black text-slate-400 uppercase mb-2 tracking-widest">Seleccionar Cámara</label>
+                          <select 
+                             value={selectedDeviceId}
+                             onChange={(e) => { setSelectedDeviceId(e.target.value); setCameraError(null); }}
+                             className="w-full bg-white/10 text-white text-[10px] p-2 rounded outline-none border border-white/10 focus:border-corp-accent"
+                          >
+                              {videoDevices.length === 0 && <option value="">Detectando...</option>}
+                              {videoDevices.map(device => (
+                                  <option key={device.deviceId} value={device.deviceId}>
+                                      {device.label || `Cámara ${device.deviceId.slice(0, 5)}...`}
+                                  </option>
+                              ))}
+                          </select>
+                      </div>
+
+                      {/* Aspect Ratio Toggle */}
+                      <div>
+                          <label className="block text-[9px] font-black text-slate-400 uppercase mb-2 tracking-widest">Formato de Transmisión</label>
+                          <div className="flex gap-2">
+                              <button 
+                                onClick={() => setAspectRatio('16:9')}
+                                className={`flex-1 py-2 rounded text-[10px] font-bold uppercase border ${aspectRatio === '16:9' ? 'bg-corp-accent border-corp-accent text-white' : 'bg-white/5 border-white/10 text-slate-400'}`}
+                              >
+                                  Horizontal (FB)
+                              </button>
+                              <button 
+                                onClick={() => setAspectRatio('9:16')}
+                                className={`flex-1 py-2 rounded text-[10px] font-bold uppercase border ${aspectRatio === '9:16' ? 'bg-corp-accent border-corp-accent text-white' : 'bg-white/5 border-white/10 text-slate-400'}`}
+                              >
+                                  Vertical (TikTok)
+                              </button>
+                          </div>
+                      </div>
                   </div>
               )}
           </div>
@@ -523,13 +549,13 @@ export const TVOverlay: React.FC<TVOverlayProps> = ({
       ) : (
           /* --- SCOREBOARD (RESPONSIVE VERTICAL/HORIZONTAL) --- */
           visibleScoreboard && !isPreMatch && (
-            <div className="relative z-10 w-full max-w-6xl mx-auto px-2 md:px-4 animate-in slide-in-from-top-5 duration-500 transition-all absolute top-20 md:bottom-6 md:top-auto">
-                <div className="flex items-stretch h-16 md:h-20 shadow-[0_10px_30px_rgba(0,0,0,0.5)] rounded-lg overflow-hidden border border-white/10">
+            <div className={`relative z-10 w-full mx-auto px-2 md:px-4 animate-in slide-in-from-top-5 duration-500 transition-all absolute ${isVertical ? 'top-32 max-w-sm' : 'top-20 md:bottom-6 md:top-auto max-w-6xl'}`}>
+                <div className={`flex items-stretch shadow-[0_10px_30px_rgba(0,0,0,0.5)] rounded-lg overflow-hidden border border-white/10 ${isVertical ? 'flex-col h-auto' : 'h-16 md:h-20'}`}>
                     
                     {/* Team A Section */}
-                    <div className="flex-1 bg-gradient-to-r from-blue-900 to-blue-800 flex items-center justify-between px-2 md:px-4 relative">
+                    <div className={`flex-1 bg-gradient-to-r from-blue-900 to-blue-800 flex items-center justify-between relative ${isVertical ? 'p-3 border-b border-white/10' : 'px-2 md:px-4'}`}>
                         {match.servingTeamId === teamA.id && (
-                            <div className="absolute inset-0 flex items-center justify-start pl-1 opacity-20 pointer-events-none">
+                            <div className={`absolute inset-0 flex items-center justify-start opacity-20 pointer-events-none ${isVertical ? 'pl-4' : 'pl-1'}`}>
                                 <span className="text-4xl">🏐</span>
                             </div>
                         )}
@@ -553,7 +579,7 @@ export const TVOverlay: React.FC<TVOverlayProps> = ({
                     </div>
 
                     {/* Center Info */}
-                    <div className="w-12 md:w-24 bg-black/90 flex flex-col items-center justify-center border-x border-white/10 z-10 relative">
+                    <div className={`bg-black/90 flex flex-col items-center justify-center border-x border-white/10 z-10 relative ${isVertical ? 'py-1' : 'w-12 md:w-24'}`}>
                         <div className="text-[9px] md:text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-0.5">Set {match.currentSet}</div>
                         <div className={`text-[10px] md:text-xs font-bold text-white px-1 md:px-2 rounded ${isSetFinished ? 'bg-yellow-500 text-black' : 'bg-red-600 animate-pulse'}`}>
                             {isSetFinished ? 'FIN' : 'LIVE'}
@@ -561,27 +587,27 @@ export const TVOverlay: React.FC<TVOverlayProps> = ({
                     </div>
 
                     {/* Team B Section */}
-                    <div className="flex-1 bg-gradient-to-l from-red-900 to-red-800 flex items-center justify-between px-2 md:px-4 relative flex-row-reverse">
+                    <div className={`flex-1 bg-gradient-to-l from-red-900 to-red-800 flex items-center justify-between relative ${isVertical ? 'p-3 flex-row border-t border-white/10' : 'px-2 md:px-4 flex-row-reverse'}`}>
                          {match.servingTeamId === teamB.id && (
-                            <div className="absolute inset-0 flex items-center justify-end pr-1 opacity-20 pointer-events-none">
+                            <div className={`absolute inset-0 flex items-center justify-end opacity-20 pointer-events-none ${isVertical ? 'pr-4' : 'pr-1'}`}>
                                 <span className="text-4xl">🏐</span>
                             </div>
                          )}
-                        <div className="flex items-center gap-2 md:gap-3 flex-row-reverse z-10">
+                        <div className={`flex items-center gap-2 md:gap-3 z-10 ${isVertical ? '' : 'flex-row-reverse'}`}>
                             <div className="w-8 h-8 md:w-12 md:h-12 bg-white rounded p-1 shadow-md relative">
                                 {teamB.logoUrl ? <img src={teamB.logoUrl} className="w-full h-full object-contain" /> : <div className="text-red-900 font-bold text-lg md:text-xl flex items-center justify-center h-full">{teamB.name[0]}</div>}
                                 {match.servingTeamId === teamB.id && <div className="absolute -top-1 -right-1 text-lg bg-white rounded-full leading-none shadow-sm border border-slate-200">🏐</div>}
                             </div>
-                            <div className="flex flex-col items-end">
-                                <h2 className="text-white font-black uppercase italic tracking-tighter text-sm md:text-xl leading-none text-right">{teamB.name}</h2>
-                                <div className="flex gap-1 mt-1 justify-end">
+                            <div className={`flex flex-col ${isVertical ? '' : 'items-end'}`}>
+                                <h2 className={`text-white font-black uppercase italic tracking-tighter text-sm md:text-xl leading-none ${isVertical ? '' : 'text-right'}`}>{teamB.name}</h2>
+                                <div className={`flex gap-1 mt-1 ${isVertical ? '' : 'justify-end'}`}>
                                     {sets.filter(s => s.scoreB > s.scoreA && Math.max(s.scoreA, s.scoreB) >= (match.currentSet === match.config.maxSets ? match.config.tieBreakPoints : match.config.pointsPerSet)).map((_,i) => (
                                         <div key={i} className="w-2 h-2 md:w-3 md:h-3 bg-yellow-400 rounded-full border border-yellow-600"></div>
                                     ))}
                                 </div>
                             </div>
                         </div>
-                        <div className="text-3xl md:text-5xl font-black text-white tabular-nums tracking-tighter drop-shadow-md z-10 pr-2">
+                        <div className={`text-3xl md:text-5xl font-black text-white tabular-nums tracking-tighter drop-shadow-md z-10 ${isVertical ? 'pr-2' : 'pr-2'}`}>
                             {match.scoreB}
                         </div>
                     </div>

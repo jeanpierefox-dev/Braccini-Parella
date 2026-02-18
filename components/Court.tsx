@@ -34,7 +34,7 @@ export const Court: React.FC<CourtProps> = ({ players = [], serving, teamName, r
       </div>
 
       {/* The Actual Court (Orange Area) */}
-      <div className={`bg-court-main border-4 border-white relative shadow-[inset_0_0_20px_rgba(0,0,0,0.2)] ${isReferee ? 'h-[400px]' : 'h-64 sm:h-80'}`}>
+      <div className={`bg-court-main border-4 border-white relative shadow-[inset_0_0_20px_rgba(0,0,0,0.2)] ${isReferee ? 'h-64 md:h-[400px]' : 'h-64 sm:h-80'}`}>
         
         {/* Attack Line (3m) */}
         <div className="absolute top-1/3 left-0 right-0 h-2 bg-white/80"></div>
@@ -54,7 +54,7 @@ export const Court: React.FC<CourtProps> = ({ players = [], serving, teamName, r
                   className={`${layout.grid} flex flex-col items-center justify-center relative group border border-white/5`}
                 >
                   {/* Position Marker on Floor */}
-                  <span className={`absolute top-1 right-1 font-black text-black/20 ${isReferee ? 'text-4xl' : 'text-[9px]'}`}>{layout.pos}</span>
+                  <span className={`absolute top-1 right-1 font-black text-black/20 ${isReferee ? 'text-2xl md:text-4xl' : 'text-[9px]'}`}>{layout.pos}</span>
 
                   {playerByIndex ? (
                     <div className="flex flex-col items-center z-10 transform transition group-hover:scale-105 w-full px-1">
@@ -62,13 +62,13 @@ export const Court: React.FC<CourtProps> = ({ players = [], serving, teamName, r
                         rounded-full flex items-center justify-center 
                         font-black shadow-[0_4px_6px_rgba(0,0,0,0.3)] border-2 border-white
                         ${playerByIndex.name === 'Libero' ? 'bg-yellow-400 text-black' : 'bg-vnl-panel text-white'}
-                        ${isReferee ? 'w-20 h-20 text-3xl mb-2' : 'w-10 h-10 sm:w-12 sm:h-12 text-lg'}
+                        ${isReferee ? 'w-12 h-12 text-xl md:w-20 md:h-20 md:text-3xl mb-1 md:mb-2' : 'w-10 h-10 sm:w-12 sm:h-12 text-lg'}
                       `}>
                         {playerByIndex.number}
                       </div>
                       <div className={`
                         px-2 py-0.5 bg-black/60 backdrop-blur-sm rounded text-white font-bold uppercase tracking-wide truncate max-w-full text-center
-                        ${isReferee ? 'text-sm w-full' : 'text-[10px] max-w-[80px]'}
+                        ${isReferee ? 'text-xs md:text-sm w-full' : 'text-[10px] max-w-[80px]'}
                       `}>
                         {playerByIndex.name.split(' ')[0]}
                       </div>
