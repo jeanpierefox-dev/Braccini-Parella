@@ -1398,7 +1398,12 @@ export const App: React.FC = () => {
               teamB={activeTournament.teams.find(t => t.id === activeTournament?.fixtures?.find(f => f.id === liveMatch?.matchId)?.teamBId)!}
               onClose={() => setViewingSetStats(null)}
               onNextSet={() => { handleStartNextSet(); setViewingSetStats(null); }}
-              showNextButton={isAdmin && liveMatch?.status === 'finished_set'}
+              showNextButton={canControlMatch && liveMatch?.status === 'finished_set'}
+              onShowOnTV={() => {
+                  if (canControlMatch) {
+                      updateLiveMatch(prev => prev ? { ...prev, showStats: true, showScoreboard: false } : null);
+                  }
+              }}
           />
       )}
       

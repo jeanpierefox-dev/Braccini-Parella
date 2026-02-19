@@ -419,9 +419,9 @@ export const TVOverlay: React.FC<TVOverlayProps> = ({
       {/* --- ROTATION OVERLAY (COURT VISUALIZATION) --- */}
       {showRotationView && (
           <div className="absolute inset-0 z-40 bg-black/90 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-300">
-              <div className="w-full max-w-5xl flex flex-col gap-6">
+              <div className="w-full max-w-4xl flex flex-col gap-4 scale-90 md:scale-100">
                   <div className="flex justify-between items-center text-white px-4">
-                       <h2 className="text-2xl font-black uppercase italic tracking-widest">Rotación en Cancha</h2>
+                       <h2 className="text-xl md:text-2xl font-black uppercase italic tracking-widest">Rotación en Cancha</h2>
                        <button 
                           onClick={() => setShowRotationView(false)}
                           className="bg-white/10 hover:bg-white/20 text-white w-10 h-10 rounded-full flex items-center justify-center transition"
@@ -430,9 +430,9 @@ export const TVOverlay: React.FC<TVOverlayProps> = ({
                       </button>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8 h-full">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-8 h-full">
                       {/* Team A Court */}
-                      <div className="relative bg-[#ffb07c] border-4 border-white shadow-2xl overflow-hidden aspect-[9/9] md:aspect-[9/9] rounded-lg">
+                      <div className="relative bg-[#ffb07c] border-4 border-white shadow-2xl overflow-hidden aspect-square rounded-lg">
                           {/* Court Lines */}
                           <div className="absolute top-1/3 left-0 right-0 h-1 bg-white/80"></div> {/* Attack Line */}
                           <div className="absolute inset-0 flex items-center justify-center opacity-10 pointer-events-none">
@@ -491,7 +491,7 @@ export const TVOverlay: React.FC<TVOverlayProps> = ({
                       </div>
 
                       {/* Team B Court */}
-                      <div className="relative bg-[#ffb07c] border-4 border-white shadow-2xl overflow-hidden aspect-[9/9] md:aspect-[9/9] rounded-lg">
+                      <div className="relative bg-[#ffb07c] border-4 border-white shadow-2xl overflow-hidden aspect-square rounded-lg">
                           {/* Court Lines */}
                           <div className="absolute top-1/3 left-0 right-0 h-1 bg-white/80"></div> {/* Attack Line */}
                           <div className="absolute inset-0 flex items-center justify-center opacity-10 pointer-events-none">
