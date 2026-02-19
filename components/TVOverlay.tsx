@@ -256,6 +256,8 @@ export const TVOverlay: React.FC<TVOverlayProps> = ({
       errors: calculateTeamErrors(teamB.id)
   };
 
+  const canUseTikTok = currentUser?.role === 'ADMIN';
+
   return (
     <div className="fixed inset-0 z-[100] flex flex-col justify-end pb-0 font-sans bg-transparent overflow-hidden transition-all duration-300">
       
@@ -401,9 +403,23 @@ export const TVOverlay: React.FC<TVOverlayProps> = ({
           </div>
       )}
 
-      {/* Rotation View Toggle - Admin Only */}
-      {isAdmin && (
+      {/* TikTok & Facebook Live Buttons - Admin Only */}
+      {canUseTikTok && (
         <div className="absolute top-36 right-6 landscape:top-24 landscape:right-4 portrait:bottom-24 portrait:right-4 portrait:top-auto flex flex-col items-center gap-4 opacity-100 z-20 transition-all">
+           {/* TikTok */}
+           <button 
+             onClick={() => window.open('https://www.tiktok.com/live/studio', '_blank')}
+             className="flex flex-col items-center gap-2 group hover:scale-105 transition"
+             title="Ir a TikTok Live Studio"
+           >
+               <div className="w-12 h-12 bg-black/80 rounded-full flex items-center justify-center border-2 border-[#ff0050] group-hover:bg-[#ff0050] transition shadow-[0_0_15px_rgba(255,0,80,0.6)]">
+                   <svg fill="#ffffff" width="20px" height="20px" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+                       <path d="M412.19,118.66a109.27,109.27,0,0,1-9.45-5.5,132.87,132.87,0,0,1-24.27-20.62c-18.1-20.71-24.86-41.72-27.35-56.43h.1C349.14,23.9,350,16,350.13,16H267.69V334.78c0,4.28,0,8.51-.18,12.69,0,45.25-35.31,81.93-78.88,81.93-43.58,0-78.89-36.68-78.89-81.93s35.31-81.93,78.89-81.93,77.54,77.54,0,0,1,31.74,6.75A79.44,79.44,0,0,1,232.06,278h79.14c-1.57-23.77-5.51-45.92-11.49-65.73-12.87-42.61-46.12-75.13-88.7-86.82-14-3.85-28.78-5.73-43.58-5.73-87.35,0-158.18,73.56-158.18,164.29C9.36,374.74,80.19,448.3,167.54,448.3c75.61,0,138.56-54.89,153.11-127.35.6-2.98.9-5.78,1.21-8.54V154.55c23.08,17.47,50.69,27.81,80.59,27.81a134.33,134.33,0,0,0,9.75-.41V118.66Z"/>
+                   </svg>
+               </div>
+           </button>
+           
+           {/* Rotation View Toggle */}
            <button 
              onClick={() => setShowRotationView(!showRotationView)}
              className={`flex flex-col items-center gap-2 group hover:scale-105 transition ${showRotationView ? 'opacity-100' : 'opacity-80'}`}
@@ -419,20 +435,20 @@ export const TVOverlay: React.FC<TVOverlayProps> = ({
       {/* --- ROTATION OVERLAY (COURT VISUALIZATION) --- */}
       {showRotationView && (
           <div className="absolute inset-0 z-40 bg-black/90 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-300">
-              <div className="w-full max-w-4xl flex flex-col gap-4 scale-90 md:scale-100">
+              <div className="w-full max-w-3xl flex flex-col gap-4 scale-75 md:scale-90 origin-center">
                   <div className="flex justify-between items-center text-white px-4">
-                       <h2 className="text-xl md:text-2xl font-black uppercase italic tracking-widest">Rotación en Cancha</h2>
+                       <h2 className="text-xl font-black uppercase italic tracking-widest">Rotación</h2>
                        <button 
                           onClick={() => setShowRotationView(false)}
-                          className="bg-white/10 hover:bg-white/20 text-white w-10 h-10 rounded-full flex items-center justify-center transition"
+                          className="bg-white/10 hover:bg-white/20 text-white w-8 h-8 rounded-full flex items-center justify-center transition"
                       >
                           ✕
                       </button>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-8 h-full">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 h-full">
                       {/* Team A Court */}
-                      <div className="relative bg-[#ffb07c] border-4 border-white shadow-2xl overflow-hidden aspect-square rounded-lg">
+                      <div className="relative bg-[#ffb07c] border-2 border-white shadow-2xl overflow-hidden aspect-square rounded-lg">
                           {/* Court Lines */}
                           <div className="absolute top-1/3 left-0 right-0 h-1 bg-white/80"></div> {/* Attack Line */}
                           <div className="absolute inset-0 flex items-center justify-center opacity-10 pointer-events-none">
@@ -491,7 +507,7 @@ export const TVOverlay: React.FC<TVOverlayProps> = ({
                       </div>
 
                       {/* Team B Court */}
-                      <div className="relative bg-[#ffb07c] border-4 border-white shadow-2xl overflow-hidden aspect-square rounded-lg">
+                      <div className="relative bg-[#ffb07c] border-2 border-white shadow-2xl overflow-hidden aspect-square rounded-lg">
                           {/* Court Lines */}
                           <div className="absolute top-1/3 left-0 right-0 h-1 bg-white/80"></div> {/* Attack Line */}
                           <div className="absolute inset-0 flex items-center justify-center opacity-10 pointer-events-none">
@@ -661,27 +677,29 @@ export const TVOverlay: React.FC<TVOverlayProps> = ({
       ) : (
           /* --- SCOREBOARD (RESPONSIVE VERTICAL/HORIZONTAL) --- */
           visibleScoreboard && !isPreMatch && (
-            <div className={`relative z-10 w-full mx-auto px-2 md:px-4 animate-in slide-in-from-top-5 duration-500 transition-all absolute 
-                ${isVertical ? 'top-32 max-w-sm' : 'top-20 md:bottom-6 md:top-auto max-w-6xl'}
-                landscape:top-auto landscape:bottom-6 landscape:max-w-6xl landscape:w-full
-                portrait:top-32 portrait:max-w-sm portrait:w-full
+            <div className={`relative z-10 w-full mx-auto px-2 md:px-4 transition-all absolute 
+                ${isVertical 
+                    ? 'top-32 max-w-sm' 
+                    : 'top-20 md:bottom-6 md:top-auto max-w-6xl'
+                }
             `}>
                 <div className={`flex items-stretch shadow-[0_10px_30px_rgba(0,0,0,0.5)] rounded-lg overflow-hidden border border-white/10 
-                    ${isVertical ? 'flex-col h-auto' : 'h-16 md:h-20'}
-                    landscape:flex-row landscape:h-16 landscape:md:h-20
-                    portrait:flex-col portrait:h-auto
+                    ${isVertical 
+                        ? 'flex-col h-auto' 
+                        : 'h-16 md:h-20 flex-row'
+                    }
                 `}>
                     
                     {/* Team A Section */}
                     <div className={`flex-1 bg-gradient-to-r from-blue-900 to-blue-800 flex items-center justify-between relative 
-                        ${isVertical ? 'p-3 border-b border-white/10' : 'px-2 md:px-4'}
-                        landscape:px-4 landscape:border-b-0 landscape:flex-row
-                        portrait:p-3 portrait:border-b portrait:border-white/10
+                        ${isVertical 
+                            ? 'p-3 border-b border-white/10 flex-row' 
+                            : 'px-2 md:px-4 border-b-0 flex-row'
+                        }
                     `}>
                         {match.servingTeamId === teamA.id && (
                             <div className={`absolute inset-0 flex items-center justify-start opacity-20 pointer-events-none 
                                 ${isVertical ? 'pl-4' : 'pl-1'}
-                                landscape:pl-1 portrait:pl-4
                             `}>
                                 <span className="text-4xl">🏐</span>
                             </div>
@@ -707,9 +725,7 @@ export const TVOverlay: React.FC<TVOverlayProps> = ({
 
                     {/* Center Info */}
                     <div className={`bg-black/90 flex flex-col items-center justify-center border-x border-white/10 z-10 relative 
-                        ${isVertical ? 'py-1' : 'w-12 md:w-24'}
-                        landscape:w-24 landscape:py-0
-                        portrait:w-full portrait:py-1
+                        ${isVertical ? 'py-1 w-full' : 'w-12 md:w-24 py-0'}
                     `}>
                         <div className="text-[9px] md:text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-0.5">Set {match.currentSet}</div>
                         <div className={`text-[10px] md:text-xs font-bold text-white px-1 md:px-2 rounded ${isSetFinished ? 'bg-yellow-500 text-black' : 'bg-red-600 animate-pulse'}`}>
@@ -730,21 +746,20 @@ export const TVOverlay: React.FC<TVOverlayProps> = ({
 
                     {/* Team B Section */}
                     <div className={`flex-1 bg-gradient-to-l from-red-900 to-red-800 flex items-center justify-between relative 
-                        ${isVertical ? 'p-3 flex-row border-t border-white/10' : 'px-2 md:px-4 flex-row-reverse'}
-                        landscape:px-4 landscape:flex-row-reverse landscape:border-t-0
-                        portrait:p-3 portrait:flex-row portrait:border-t portrait:border-white/10
+                        ${isVertical 
+                            ? 'p-3 flex-row border-t border-white/10' 
+                            : 'px-2 md:px-4 flex-row-reverse border-t-0'
+                        }
                     `}>
                          {match.servingTeamId === teamB.id && (
                             <div className={`absolute inset-0 flex items-center justify-end opacity-20 pointer-events-none 
                                 ${isVertical ? 'pr-4' : 'pr-1'}
-                                landscape:pr-1 portrait:pr-4
                             `}>
                                 <span className="text-4xl">🏐</span>
                             </div>
                          )}
                         <div className={`flex items-center gap-2 md:gap-3 z-10 
                             ${isVertical ? '' : 'flex-row-reverse'}
-                            landscape:flex-row-reverse portrait:flex-row
                         `}>
                             <div className="w-8 h-8 md:w-12 md:h-12 bg-white rounded p-1 shadow-md relative">
                                 {teamB.logoUrl ? <img src={teamB.logoUrl} className="w-full h-full object-contain" /> : <div className="text-red-900 font-bold text-lg md:text-xl flex items-center justify-center h-full">{teamB.name[0]}</div>}
@@ -752,15 +767,12 @@ export const TVOverlay: React.FC<TVOverlayProps> = ({
                             </div>
                             <div className={`flex flex-col 
                                 ${isVertical ? '' : 'items-end'}
-                                landscape:items-end portrait:items-start
                             `}>
                                 <h2 className={`text-white font-black uppercase italic tracking-tighter text-sm md:text-xl leading-none 
                                     ${isVertical ? '' : 'text-right'}
-                                    landscape:text-right portrait:text-left
                                 `}>{teamB.name}</h2>
                                 <div className={`flex gap-1 mt-1 
                                     ${isVertical ? '' : 'justify-end'}
-                                    landscape:justify-end portrait:justify-start
                                 `}>
                                     {sets.filter(s => s.scoreB > s.scoreA && Math.max(s.scoreA, s.scoreB) >= (match.currentSet === match.config.maxSets ? match.config.tieBreakPoints : match.config.pointsPerSet)).map((_,i) => (
                                         <div key={i} className="w-2 h-2 md:w-3 md:h-3 bg-yellow-400 rounded-full border border-yellow-600"></div>
