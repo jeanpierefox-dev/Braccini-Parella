@@ -59,10 +59,21 @@ export const TVOverlay: React.FC<TVOverlayProps> = ({
 
   // Handle Transitions ("Stinger Effect")
   useEffect(() => {
-    if (showScoreboard !== visibleScoreboard || showStatsOverlay !== visibleStats) {
+    // Only trigger transition if the VISIBILITY state changes, not on every render
+    if (showScoreboard !== visibleScoreboard) {
         setIsTransitioning(true);
         const updateTimer = setTimeout(() => {
             setVisibleScoreboard(showScoreboard);
+        }, 500);
+        const endTimer = setTimeout(() => {
+            setIsTransitioning(false);
+        }, 1100);
+        return () => { clearTimeout(updateTimer); clearTimeout(endTimer); };
+    }
+    
+    if (showStatsOverlay !== visibleStats) {
+        setIsTransitioning(true);
+        const updateTimer = setTimeout(() => {
             setVisibleStats(showStatsOverlay);
         }, 500);
         const endTimer = setTimeout(() => {
@@ -245,13 +256,6 @@ export const TVOverlay: React.FC<TVOverlayProps> = ({
       errors: calculateTeamErrors(teamB.id)
   };
 
-  const handleTikTokLive = () => {
-      const text = `🏆 Torneo: ${tournament?.name || 'Voley'} | 🏐 ${teamA.name} VS ${teamB.name} | 🔴 EN VIVO`;
-      window.open(`https://www.tiktok.com/studio/download?params=${encodeURIComponent(text)}`, '_blank');
-  };
-
-  const canUseTikTok = currentUser?.role === 'ADMIN';
-
   return (
     <div className="fixed inset-0 z-[100] flex flex-col justify-end pb-0 font-sans bg-transparent overflow-hidden transition-all duration-300">
       
@@ -397,34 +401,9 @@ export const TVOverlay: React.FC<TVOverlayProps> = ({
           </div>
       )}
 
-      {/* TikTok & Facebook Live Buttons - Admin Only */}
-      {canUseTikTok && (
+      {/* Rotation View Toggle - Admin Only */}
+      {isAdmin && (
         <div className="absolute top-36 right-6 landscape:top-24 landscape:right-4 portrait:bottom-24 portrait:right-4 portrait:top-auto flex flex-col items-center gap-4 opacity-100 z-20 transition-all">
-           {/* TikTok */}
-           <button 
-             onClick={handleTikTokLive}
-             className="flex flex-col items-center gap-2 group hover:scale-105 transition"
-             title="Ir a TikTok Live Studio"
-           >
-               <div className="w-12 h-12 bg-black/80 rounded-full flex items-center justify-center border-2 border-[#ff0050] group-hover:bg-[#ff0050] transition shadow-[0_0_15px_rgba(255,0,80,0.6)]">
-                   <svg fill="#ffffff" width="20px" height="20px" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
-                       <path d="M412.19,118.66a109.27,109.27,0,0,1-9.45-5.5,132.87,132.87,0,0,1-24.27-20.62c-18.1-20.71-24.86-41.72-27.35-56.43h.1C349.14,23.9,350,16,350.13,16H267.69V334.78c0,4.28,0,8.51-.18,12.69,0,45.25-35.31,81.93-78.88,81.93-43.58,0-78.89-36.68-78.89-81.93s35.31-81.93,78.89-81.93,77.54,77.54,0,0,1,31.74,6.75A79.44,79.44,0,0,1,232.06,278h79.14c-1.57-23.77-5.51-45.92-11.49-65.73-12.87-42.61-46.12-75.13-88.7-86.82-14-3.85-28.78-5.73-43.58-5.73-87.35,0-158.18,73.56-158.18,164.29C9.36,374.74,80.19,448.3,167.54,448.3c75.61,0,138.56-54.89,153.11-127.35.6-2.98.9-5.78,1.21-8.54V154.55c23.08,17.47,50.69,27.81,80.59,27.81a134.33,134.33,0,0,0,9.75-.41V118.66Z"/>
-                   </svg>
-               </div>
-           </button>
-
-           {/* Facebook */}
-           <button 
-             onClick={() => window.open('https://www.facebook.com/live/producer/', '_blank')}
-             className="flex flex-col items-center gap-2 group hover:scale-105 transition"
-             title="Ir a Facebook Live Producer"
-           >
-               <div className="w-12 h-12 bg-black/80 rounded-full flex items-center justify-center border-2 border-[#1877F2] group-hover:bg-[#1877F2] transition shadow-[0_0_15px_rgba(24,119,242,0.6)]">
-                   <span className="text-white font-black text-xl">f</span>
-               </div>
-           </button>
-           
-           {/* Rotation View Toggle */}
            <button 
              onClick={() => setShowRotationView(!showRotationView)}
              className={`flex flex-col items-center gap-2 group hover:scale-105 transition ${showRotationView ? 'opacity-100' : 'opacity-80'}`}
@@ -437,67 +416,135 @@ export const TVOverlay: React.FC<TVOverlayProps> = ({
         </div>
       )}
 
-      {/* --- ROTATION OVERLAY --- */}
+      {/* --- ROTATION OVERLAY (COURT VISUALIZATION) --- */}
       {showRotationView && (
-          <div className="absolute inset-0 z-40 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-300">
-              <div className="w-full max-w-4xl grid grid-cols-1 md:grid-cols-2 gap-8">
-                  {/* Team A Rotation */}
-                  <div className="bg-blue-900/30 border border-blue-500/30 rounded-xl p-4">
-                      <div className="flex items-center gap-3 mb-4 border-b border-white/10 pb-2">
-                          {teamA.logoUrl && <img src={teamA.logoUrl} className="w-8 h-8 object-contain" />}
-                          <h3 className="text-white font-bold uppercase">{teamA.name}</h3>
-                      </div>
-                      <div className="grid grid-cols-3 gap-2 aspect-video relative bg-blue-900/20 rounded-lg p-2">
-                          {/* Court Grid 3x2 */}
-                          {[4, 3, 2, 5, 6, 1].map((pos) => {
-                              const player = match.rotationA[pos - 1]; // Adjust index
-                              return (
-                                  <div key={pos} className="border border-white/10 rounded flex flex-col items-center justify-center p-2 relative">
-                                      <span className="absolute top-1 left-1 text-[8px] text-slate-400">P{pos}</span>
-                                      {player ? (
-                                          <>
-                                              <span className="text-xl font-black text-white">#{player.number}</span>
-                                              <span className="text-[8px] text-slate-300 truncate w-full text-center">{player.name.split(' ')[0]}</span>
-                                          </>
-                                      ) : <span className="text-slate-600">-</span>}
-                                  </div>
-                              );
-                          })}
-                      </div>
+          <div className="absolute inset-0 z-40 bg-black/90 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-300">
+              <div className="w-full max-w-5xl flex flex-col gap-6">
+                  <div className="flex justify-between items-center text-white px-4">
+                       <h2 className="text-2xl font-black uppercase italic tracking-widest">Rotación en Cancha</h2>
+                       <button 
+                          onClick={() => setShowRotationView(false)}
+                          className="bg-white/10 hover:bg-white/20 text-white w-10 h-10 rounded-full flex items-center justify-center transition"
+                      >
+                          ✕
+                      </button>
                   </div>
 
-                  {/* Team B Rotation */}
-                  <div className="bg-red-900/30 border border-red-500/30 rounded-xl p-4">
-                      <div className="flex items-center gap-3 mb-4 border-b border-white/10 pb-2">
-                          {teamB.logoUrl && <img src={teamB.logoUrl} className="w-8 h-8 object-contain" />}
-                          <h3 className="text-white font-bold uppercase">{teamB.name}</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8 h-full">
+                      {/* Team A Court */}
+                      <div className="relative bg-[#ffb07c] border-4 border-white shadow-2xl overflow-hidden aspect-[9/9] md:aspect-[9/9] rounded-lg">
+                          {/* Court Lines */}
+                          <div className="absolute top-1/3 left-0 right-0 h-1 bg-white/80"></div> {/* Attack Line */}
+                          <div className="absolute inset-0 flex items-center justify-center opacity-10 pointer-events-none">
+                              {teamA.logoUrl ? <img src={teamA.logoUrl} className="w-48 h-48 object-contain grayscale" /> : <div className="text-9xl font-black text-black">{teamA.name[0]}</div>}
+                          </div>
+                          
+                          {/* Team Name Label */}
+                          <div className="absolute top-2 left-2 bg-blue-900/90 text-white px-3 py-1 rounded font-bold uppercase text-sm border border-white/20 shadow-lg z-10">
+                              {teamA.name}
+                          </div>
+
+                          {/* Players Grid (Geographic) */}
+                          {/* 
+                             Net is at the TOP for this view (or bottom depending on perspective). 
+                             Standard rotation positions:
+                             4 3 2  (Front Row)
+                             5 6 1  (Back Row)
+                          */}
+                          <div className="absolute inset-0 grid grid-rows-2 grid-cols-3 p-4 gap-4">
+                              {/* Front Row: 4, 3, 2 */}
+                              {[4, 3, 2].map((pos) => {
+                                  const player = match.rotationA[pos - 1];
+                                  return (
+                                      <div key={pos} className="flex flex-col items-center justify-center">
+                                          <div className="w-16 h-16 bg-blue-900 rounded-full border-2 border-white shadow-lg flex items-center justify-center relative group">
+                                              <span className="text-2xl font-black text-white">{player ? player.number : '-'}</span>
+                                              <div className="absolute -bottom-2 bg-black/80 text-white text-[10px] px-2 py-0.5 rounded-full uppercase font-bold whitespace-nowrap">
+                                                  {player ? player.name.split(' ')[0] : 'VACÍO'}
+                                              </div>
+                                              <div className="absolute top-0 right-0 w-5 h-5 bg-yellow-400 text-black text-[10px] font-bold rounded-full flex items-center justify-center border border-white">
+                                                  P{pos}
+                                              </div>
+                                          </div>
+                                      </div>
+                                  );
+                              })}
+                              
+                              {/* Back Row: 5, 6, 1 */}
+                              {[5, 6, 1].map((pos) => {
+                                  const player = match.rotationA[pos - 1];
+                                  return (
+                                      <div key={pos} className="flex flex-col items-center justify-center">
+                                          <div className="w-16 h-16 bg-blue-800 rounded-full border-2 border-white/50 shadow-lg flex items-center justify-center relative">
+                                              <span className="text-2xl font-black text-white">{player ? player.number : '-'}</span>
+                                              <div className="absolute -bottom-2 bg-black/80 text-white text-[10px] px-2 py-0.5 rounded-full uppercase font-bold whitespace-nowrap">
+                                                  {player ? player.name.split(' ')[0] : 'VACÍO'}
+                                              </div>
+                                              <div className="absolute top-0 right-0 w-5 h-5 bg-slate-600 text-white text-[10px] font-bold rounded-full flex items-center justify-center border border-white">
+                                                  P{pos}
+                                              </div>
+                                          </div>
+                                      </div>
+                                  );
+                              })}
+                          </div>
                       </div>
-                      <div className="grid grid-cols-3 gap-2 aspect-video relative bg-red-900/20 rounded-lg p-2">
-                          {/* Court Grid 3x2 */}
-                          {[2, 3, 4, 1, 6, 5].map((pos) => {
-                              const player = match.rotationB[pos - 1]; // Adjust index
-                              return (
-                                  <div key={pos} className="border border-white/10 rounded flex flex-col items-center justify-center p-2 relative">
-                                      <span className="absolute top-1 left-1 text-[8px] text-slate-400">P{pos}</span>
-                                      {player ? (
-                                          <>
-                                              <span className="text-xl font-black text-white">#{player.number}</span>
-                                              <span className="text-[8px] text-slate-300 truncate w-full text-center">{player.name.split(' ')[0]}</span>
-                                          </>
-                                      ) : <span className="text-slate-600">-</span>}
-                                  </div>
-                              );
-                          })}
+
+                      {/* Team B Court */}
+                      <div className="relative bg-[#ffb07c] border-4 border-white shadow-2xl overflow-hidden aspect-[9/9] md:aspect-[9/9] rounded-lg">
+                          {/* Court Lines */}
+                          <div className="absolute top-1/3 left-0 right-0 h-1 bg-white/80"></div> {/* Attack Line */}
+                          <div className="absolute inset-0 flex items-center justify-center opacity-10 pointer-events-none">
+                              {teamB.logoUrl ? <img src={teamB.logoUrl} className="w-48 h-48 object-contain grayscale" /> : <div className="text-9xl font-black text-black">{teamB.name[0]}</div>}
+                          </div>
+
+                          {/* Team Name Label */}
+                          <div className="absolute top-2 left-2 bg-red-900/90 text-white px-3 py-1 rounded font-bold uppercase text-sm border border-white/20 shadow-lg z-10">
+                              {teamB.name}
+                          </div>
+
+                          {/* Players Grid (Geographic) */}
+                          <div className="absolute inset-0 grid grid-rows-2 grid-cols-3 p-4 gap-4">
+                              {/* Front Row: 4, 3, 2 (Mapped from Team B perspective positions) */}
+                              {/* Note: Standard logic usually mirrors, but for simplicity we show same layout P4-P3-P2 top */}
+                              {[4, 3, 2].map((pos) => {
+                                  const player = match.rotationB[pos - 1];
+                                  return (
+                                      <div key={pos} className="flex flex-col items-center justify-center">
+                                          <div className="w-16 h-16 bg-red-900 rounded-full border-2 border-white shadow-lg flex items-center justify-center relative">
+                                              <span className="text-2xl font-black text-white">{player ? player.number : '-'}</span>
+                                              <div className="absolute -bottom-2 bg-black/80 text-white text-[10px] px-2 py-0.5 rounded-full uppercase font-bold whitespace-nowrap">
+                                                  {player ? player.name.split(' ')[0] : 'VACÍO'}
+                                              </div>
+                                              <div className="absolute top-0 right-0 w-5 h-5 bg-yellow-400 text-black text-[10px] font-bold rounded-full flex items-center justify-center border border-white">
+                                                  P{pos}
+                                              </div>
+                                          </div>
+                                      </div>
+                                  );
+                              })}
+                              
+                              {/* Back Row: 5, 6, 1 */}
+                              {[5, 6, 1].map((pos) => {
+                                  const player = match.rotationB[pos - 1];
+                                  return (
+                                      <div key={pos} className="flex flex-col items-center justify-center">
+                                          <div className="w-16 h-16 bg-red-800 rounded-full border-2 border-white/50 shadow-lg flex items-center justify-center relative">
+                                              <span className="text-2xl font-black text-white">{player ? player.number : '-'}</span>
+                                              <div className="absolute -bottom-2 bg-black/80 text-white text-[10px] px-2 py-0.5 rounded-full uppercase font-bold whitespace-nowrap">
+                                                  {player ? player.name.split(' ')[0] : 'VACÍO'}
+                                              </div>
+                                              <div className="absolute top-0 right-0 w-5 h-5 bg-slate-600 text-white text-[10px] font-bold rounded-full flex items-center justify-center border border-white">
+                                                  P{pos}
+                                              </div>
+                                          </div>
+                                      </div>
+                                  );
+                              })}
+                          </div>
                       </div>
                   </div>
               </div>
-              
-              <button 
-                  onClick={() => setShowRotationView(false)}
-                  className="absolute top-4 right-4 bg-white/10 hover:bg-white/20 text-white p-2 rounded-full"
-              >
-                  ✕
-              </button>
           </div>
       )}
 
