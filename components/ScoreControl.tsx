@@ -37,7 +37,7 @@ export const ScoreControl: React.FC<ScoreControlProps> = ({
   subsUsed,
   isServing
 }) => {
-  const isAdmin = role === 'ADMIN';
+  const isAdmin = role === 'ADMIN' || role === 'MAIN_REFEREE';
   const isReferee = role === 'REFEREE';
   const isTeamCoach = (role === 'COACH_A' || role === 'COACH_B') && linkedTeamId === teamId; 
   

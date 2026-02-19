@@ -25,8 +25,6 @@ export const TVOverlay: React.FC<TVOverlayProps> = ({
   tournament,
   currentUser,
   onExit, 
-  onLogout,
-  onBack,
   onNextSet,
   nextSetCountdown,
   showStatsOverlay = false,
@@ -41,6 +39,7 @@ export const TVOverlay: React.FC<TVOverlayProps> = ({
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [visibleScoreboard, setVisibleScoreboard] = useState(showScoreboard);
   const [visibleStats, setVisibleStats] = useState(showStatsOverlay);
+  const [showRotationView, setShowRotationView] = useState(false);
 
   // Camera Selection State
   const [videoDevices, setVideoDevices] = useState<MediaDeviceInfo[]>([]);
@@ -283,7 +282,7 @@ export const TVOverlay: React.FC<TVOverlayProps> = ({
 
       {/* --- STINGER TRANSITION OVERLAY --- */}
       <div 
-        className={`absolute inset-0 z-50 flex items-center justify-center bg-blue-900 transition-transform duration-500 ease-in-out ${isTransitioning ? 'scale-100' : 'scale-0'} origin-center rounded-full md:rounded-none`}
+        className={`absolute inset-0 z-50 flex items-center justify-center transition-transform duration-500 ease-in-out ${isTransitioning ? 'scale-100' : 'scale-0'} origin-center rounded-full md:rounded-none`}
         style={{ pointerEvents: 'none' }}
       >
           <div className="flex flex-col items-center animate-pulse">
@@ -298,28 +297,7 @@ export const TVOverlay: React.FC<TVOverlayProps> = ({
           
           {/* NAVIGATION BUTTONS */}
           <div className="flex flex-col gap-2">
-              {isViewer ? (
-                  <>
-                    {/* Viewer: Back to Dashboard */}
-                    {onBack && (
-                        <button 
-                            onClick={onBack}
-                            className="bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-lg text-xs font-black transition backdrop-blur-md border border-white/20 uppercase tracking-widest flex items-center gap-2 shadow-lg group"
-                        >
-                            <span>←</span> Volver al Fixture
-                        </button>
-                    )}
-                    {/* Viewer: Logout */}
-                    {onLogout && (
-                        <button 
-                            onClick={onLogout}
-                            className="bg-red-600/80 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-xs font-bold transition backdrop-blur-md border border-white/20 uppercase tracking-widest shadow-lg"
-                        >
-                            Cerrar Sesión
-                        </button>
-                    )}
-                  </>
-              ) : (
+              {!isViewer && (
                   // Admin: Back to Controls
                   <div className="flex items-center gap-2">
                     <button 
@@ -419,9 +397,10 @@ export const TVOverlay: React.FC<TVOverlayProps> = ({
           </div>
       )}
 
-      {/* TikTok Live Button - Admin Only */}
+      {/* TikTok & Facebook Live Buttons - Admin Only */}
       {canUseTikTok && (
         <div className="absolute top-36 right-6 landscape:top-24 landscape:right-4 portrait:bottom-24 portrait:right-4 portrait:top-auto flex flex-col items-center gap-4 opacity-100 z-20 transition-all">
+           {/* TikTok */}
            <button 
              onClick={handleTikTokLive}
              className="flex flex-col items-center gap-2 group hover:scale-105 transition"
@@ -433,7 +412,93 @@ export const TVOverlay: React.FC<TVOverlayProps> = ({
                    </svg>
                </div>
            </button>
+
+           {/* Facebook */}
+           <button 
+             onClick={() => window.open('https://www.facebook.com/live/producer/', '_blank')}
+             className="flex flex-col items-center gap-2 group hover:scale-105 transition"
+             title="Ir a Facebook Live Producer"
+           >
+               <div className="w-12 h-12 bg-black/80 rounded-full flex items-center justify-center border-2 border-[#1877F2] group-hover:bg-[#1877F2] transition shadow-[0_0_15px_rgba(24,119,242,0.6)]">
+                   <span className="text-white font-black text-xl">f</span>
+               </div>
+           </button>
+           
+           {/* Rotation View Toggle */}
+           <button 
+             onClick={() => setShowRotationView(!showRotationView)}
+             className={`flex flex-col items-center gap-2 group hover:scale-105 transition ${showRotationView ? 'opacity-100' : 'opacity-80'}`}
+             title="Ver Rotación"
+           >
+               <div className={`w-12 h-12 rounded-full flex items-center justify-center border-2 transition shadow-lg ${showRotationView ? 'bg-yellow-500 border-yellow-300 text-black' : 'bg-black/80 border-white/30 text-white'}`}>
+                   <span className="font-black text-xl">R</span>
+               </div>
+           </button>
         </div>
+      )}
+
+      {/* --- ROTATION OVERLAY --- */}
+      {showRotationView && (
+          <div className="absolute inset-0 z-40 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-300">
+              <div className="w-full max-w-4xl grid grid-cols-1 md:grid-cols-2 gap-8">
+                  {/* Team A Rotation */}
+                  <div className="bg-blue-900/30 border border-blue-500/30 rounded-xl p-4">
+                      <div className="flex items-center gap-3 mb-4 border-b border-white/10 pb-2">
+                          {teamA.logoUrl && <img src={teamA.logoUrl} className="w-8 h-8 object-contain" />}
+                          <h3 className="text-white font-bold uppercase">{teamA.name}</h3>
+                      </div>
+                      <div className="grid grid-cols-3 gap-2 aspect-video relative bg-blue-900/20 rounded-lg p-2">
+                          {/* Court Grid 3x2 */}
+                          {[4, 3, 2, 5, 6, 1].map((pos) => {
+                              const player = match.rotationA[pos - 1]; // Adjust index
+                              return (
+                                  <div key={pos} className="border border-white/10 rounded flex flex-col items-center justify-center p-2 relative">
+                                      <span className="absolute top-1 left-1 text-[8px] text-slate-400">P{pos}</span>
+                                      {player ? (
+                                          <>
+                                              <span className="text-xl font-black text-white">#{player.number}</span>
+                                              <span className="text-[8px] text-slate-300 truncate w-full text-center">{player.name.split(' ')[0]}</span>
+                                          </>
+                                      ) : <span className="text-slate-600">-</span>}
+                                  </div>
+                              );
+                          })}
+                      </div>
+                  </div>
+
+                  {/* Team B Rotation */}
+                  <div className="bg-red-900/30 border border-red-500/30 rounded-xl p-4">
+                      <div className="flex items-center gap-3 mb-4 border-b border-white/10 pb-2">
+                          {teamB.logoUrl && <img src={teamB.logoUrl} className="w-8 h-8 object-contain" />}
+                          <h3 className="text-white font-bold uppercase">{teamB.name}</h3>
+                      </div>
+                      <div className="grid grid-cols-3 gap-2 aspect-video relative bg-red-900/20 rounded-lg p-2">
+                          {/* Court Grid 3x2 */}
+                          {[2, 3, 4, 1, 6, 5].map((pos) => {
+                              const player = match.rotationB[pos - 1]; // Adjust index
+                              return (
+                                  <div key={pos} className="border border-white/10 rounded flex flex-col items-center justify-center p-2 relative">
+                                      <span className="absolute top-1 left-1 text-[8px] text-slate-400">P{pos}</span>
+                                      {player ? (
+                                          <>
+                                              <span className="text-xl font-black text-white">#{player.number}</span>
+                                              <span className="text-[8px] text-slate-300 truncate w-full text-center">{player.name.split(' ')[0]}</span>
+                                          </>
+                                      ) : <span className="text-slate-600">-</span>}
+                                  </div>
+                              );
+                          })}
+                      </div>
+                  </div>
+              </div>
+              
+              <button 
+                  onClick={() => setShowRotationView(false)}
+                  className="absolute top-4 right-4 bg-white/10 hover:bg-white/20 text-white p-2 rounded-full"
+              >
+                  ✕
+              </button>
+          </div>
       )}
 
       {/* --- COMPARATIVE STATS OVERLAY --- */}
@@ -602,6 +667,17 @@ export const TVOverlay: React.FC<TVOverlayProps> = ({
                         <div className="text-[9px] md:text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-0.5">Set {match.currentSet}</div>
                         <div className={`text-[10px] md:text-xs font-bold text-white px-1 md:px-2 rounded ${isSetFinished ? 'bg-yellow-500 text-black' : 'bg-red-600 animate-pulse'}`}>
                             {isSetFinished ? 'FIN' : 'LIVE'}
+                        </div>
+                        
+                        {/* Set Summary (Small) */}
+                        <div className="flex gap-1 mt-1">
+                            {sets.map((s, i) => (
+                                (s.scoreA > 0 || s.scoreB > 0) && i < match.currentSet - 1 && (
+                                    <div key={i} className="text-[8px] text-slate-400 font-mono">
+                                        {s.scoreA}-{s.scoreB}
+                                    </div>
+                                )
+                            ))}
                         </div>
                     </div>
 
