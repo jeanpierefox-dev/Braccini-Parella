@@ -426,18 +426,19 @@ export const TVOverlay: React.FC<TVOverlayProps> = ({
       {/* TikTok & Facebook Live Buttons - Admin Only */}
       {canUseTikTok && (
         <div className="absolute top-36 right-6 landscape:top-24 landscape:right-4 portrait:bottom-24 portrait:right-4 portrait:top-auto flex flex-col items-center gap-4 opacity-100 z-20 transition-all">
-           {/* TikTok */}
+           {/* Viewer Link Button */}
            <button 
-             onClick={() => setShowTikTokHelp(true)}
+             onClick={() => {
+                 navigator.clipboard.writeText(window.location.origin + '/?view=' + match.matchId);
+                 alert("Enlace de transmisión copiado al portapapeles: " + window.location.origin + '/?view=' + match.matchId);
+             }}
              className="flex flex-col items-center gap-2 group hover:scale-105 transition"
-             title="Cómo transmitir en TikTok"
+             title="Copiar Enlace de Transmisión"
            >
-               <div className="w-12 h-12 bg-black/80 rounded-full flex items-center justify-center border-2 border-[#ff0050] group-hover:bg-[#ff0050] transition shadow-[0_0_15px_rgba(255,0,80,0.6)]">
-                   <svg fill="#ffffff" width="20px" height="20px" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
-                       <path d="M412.19,118.66a109.27,109.27,0,0,1-9.45-5.5,132.87,132.87,0,0,1-24.27-20.62c-18.1-20.71-24.86-41.72-27.35-56.43h.1C349.14,23.9,350,16,350.13,16H267.69V334.78c0,4.28,0,8.51-.18,12.69,0,45.25-35.31,81.93-78.88,81.93-43.58,0-78.89-36.68-78.89-81.93s35.31-81.93,78.89-81.93,77.54,77.54,0,0,1,31.74,6.75A79.44,79.44,0,0,1,232.06,278h79.14c-1.57-23.77-5.51-45.92-11.49-65.73-12.87-42.61-46.12-75.13-88.7-86.82-14-3.85-28.78-5.73-43.58-5.73-87.35,0-158.18,73.56-158.18,164.29C9.36,374.74,80.19,448.3,167.54,448.3c75.61,0,138.56-54.89,153.11-127.35.6-2.98.9-5.78,1.21-8.54V154.55c23.08,17.47,50.69,27.81,80.59,27.81a134.33,134.33,0,0,0,9.75-.41V118.66Z"/>
-                   </svg>
+               <div className="w-12 h-12 bg-black/80 rounded-full flex items-center justify-center border-2 border-blue-500 group-hover:bg-blue-500 transition shadow-[0_0_15px_rgba(59,130,246,0.6)]">
+                   <span className="text-2xl">🔗</span>
                </div>
-               <span className="text-[8px] font-bold text-white bg-black/50 px-1 rounded">Ayuda Live</span>
+               <span className="text-[8px] font-bold text-white bg-black/50 px-1 rounded">Compartir</span>
            </button>
            
            {/* Rotation View Toggle */}
@@ -736,7 +737,7 @@ export const TVOverlay: React.FC<TVOverlayProps> = ({
           </div>
       ) : (
           /* --- SCOREBOARD (RESPONSIVE VERTICAL/HORIZONTAL) --- */
-          visibleScoreboard && !isPreMatch && (
+          visibleScoreboard && !isPreMatch && !showRotationView && (
             <div className={`relative z-10 w-full mx-auto px-2 md:px-4 absolute 
                 ${isVertical 
                     ? 'top-32 max-w-sm' 
@@ -778,7 +779,7 @@ export const TVOverlay: React.FC<TVOverlayProps> = ({
                                 </div>
                             </div>
                         </div>
-                        <div className="w-20 text-center text-3xl md:text-5xl font-black text-white tabular-nums tracking-tighter drop-shadow-md z-10 pl-2">
+                        <div className="w-24 text-center text-3xl md:text-5xl font-black text-white tabular-nums tracking-tighter drop-shadow-md z-10 pl-2">
                             {match.scoreA}
                         </div>
                     </div>
@@ -840,7 +841,7 @@ export const TVOverlay: React.FC<TVOverlayProps> = ({
                                 </div>
                             </div>
                         </div>
-                        <div className={`w-20 text-center text-3xl md:text-5xl font-black text-white tabular-nums tracking-tighter drop-shadow-md z-10 
+                        <div className={`w-24 text-center text-3xl md:text-5xl font-black text-white tabular-nums tracking-tighter drop-shadow-md z-10 
                             ${isVertical ? 'pr-2' : 'pr-2'}
                         `}>
                             {match.scoreB}
