@@ -60,16 +60,10 @@ export const TVOverlay: React.FC<TVOverlayProps> = ({
 
   // Handle Transitions ("Stinger Effect")
   useEffect(() => {
-    // Scoreboard Toggle: Standard Stinger (Cover -> Change -> Reveal)
+    // Scoreboard Toggle: NO Stinger, just instant/fade
     if (showScoreboard !== visibleScoreboard) {
-        setIsTransitioning(true);
-        const updateTimer = setTimeout(() => {
-            setVisibleScoreboard(showScoreboard);
-        }, 500);
-        const endTimer = setTimeout(() => {
-            setIsTransitioning(false);
-        }, 1100);
-        return () => { clearTimeout(updateTimer); clearTimeout(endTimer); };
+        setVisibleScoreboard(showScoreboard);
+        // No setIsTransitioning(true) here
     }
     
     // Stats Toggle: User requested Sequence (Logo Appears -> Logo Disappears -> Stats Appear)
@@ -288,13 +282,23 @@ export const TVOverlay: React.FC<TVOverlayProps> = ({
             style={{ zIndex: -1 }} 
         />
       ) : (
-        <div className="absolute inset-0 bg-corp-bg w-full h-full" style={{ zIndex: -1 }}>
-            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-blue-900/40 via-corp-bg to-black"></div>
-            <div className="absolute top-0 left-0 w-full h-full opacity-20" style={{ backgroundImage: 'radial-gradient(#ffffff 1px, transparent 1px)', backgroundSize: '30px 30px' }}></div>
-            
-            {!isViewer && cameraError && (
-                <div className="absolute top-20 right-6 flex items-center gap-2 bg-red-900/50 text-red-200 px-3 py-1 rounded-full border border-red-500/30 backdrop-blur-sm pointer-events-none">
-                    <span className="text-xs">📷 {cameraError} (Modo Gráfico)</span>
+        <div className={`absolute inset-0 w-full h-full ${isViewer ? 'bg-transparent' : 'bg-corp-bg'}`} style={{ zIndex: -1 }}>
+            {!isViewer && (
+                <>
+                    <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-blue-900/40 via-corp-bg to-black"></div>
+                    <div className="absolute top-0 left-0 w-full h-full opacity-20" style={{ backgroundImage: 'radial-gradient(#ffffff 1px, transparent 1px)', backgroundSize: '30px 30px' }}></div>
+                    
+                    {cameraError && (
+                        <div className="absolute top-20 right-6 flex items-center gap-2 bg-red-900/50 text-red-200 px-3 py-1 rounded-full border border-red-500/30 backdrop-blur-sm pointer-events-none">
+                            <span className="text-xs">📷 {cameraError} (Modo Gráfico)</span>
+                        </div>
+                    )}
+                </>
+            )}
+            {/* Viewer Mode: Transparent background for OBS/Overlay usage */}
+            {isViewer && (
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                    {/* Optional: Placeholder or just transparent */}
                 </div>
             )}
         </div>

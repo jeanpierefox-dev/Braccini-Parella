@@ -42,6 +42,23 @@ const DAYS_OF_WEEK = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sá
 export const App: React.FC = () => {
   // --- STATE ---
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+  
+  // Check for 'view' param in URL on mount to bypass login for viewers
+  useEffect(() => {
+      const params = new URLSearchParams(window.location.search);
+      const viewMatchId = params.get('view');
+      if (viewMatchId) {
+          // Create a temporary guest viewer user
+          const guestUser: User = { id: 'guest-' + Date.now(), username: 'Espectador', role: 'VIEWER' };
+          setCurrentUser(guestUser);
+          // We will let the auto-sync logic handle the rest (setting active tournament and match)
+          // But we need to ensure the match ID is set in a way that the sync logic picks it up
+          // Actually, the sync logic relies on 'liveMatch' from cloud. 
+          // If we are just a viewer, we need to wait for cloud sync.
+          // But we can set a flag or state to auto-navigate once data loads.
+      }
+  }, []);
+
   const isAdmin = currentUser?.role === 'ADMIN';
   const isMainReferee = currentUser?.role === 'MAIN_REFEREE';
   // Privilege Check for Match Control (Admin or Main Referee)
