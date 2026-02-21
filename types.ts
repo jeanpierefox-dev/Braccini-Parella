@@ -124,6 +124,7 @@ export interface LiveMatchState {
   showLeaderboard?: boolean;
   showStats?: boolean;     // Sync TV state
   showScoreboard?: boolean;// Sync TV state
+  statsSetIndex?: number;  // If defined, show stats for this set index (0-based). If undefined, show match total.
 }
 
 export interface RequestItem {

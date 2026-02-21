@@ -46,6 +46,7 @@ export const TVOverlay: React.FC<TVOverlayProps> = ({
   const [selectedDeviceId, setSelectedDeviceId] = useState<string>('');
   const [showSettings, setShowSettings] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
+  const [showTikTokHelp, setShowTikTokHelp] = useState(false);
 
   // Determine if it's "Pre-Match" based on status
   const isPreMatch = match.status === 'warmup';
@@ -54,12 +55,12 @@ export const TVOverlay: React.FC<TVOverlayProps> = ({
   const isSetFinished = match.status === 'finished_set';
 
   // Broadcast Settings
-  const [aspectRatio, setAspectRatio] = useState<'16:9' | '9:16'>('16:9');
+  const [aspectRatio, setAspectRatio] = useState<'16:9' | '9:16'>('9:16');
   const isVertical = aspectRatio === '9:16';
 
   // Handle Transitions ("Stinger Effect")
   useEffect(() => {
-    // Only trigger transition if the VISIBILITY state changes, not on every render
+    // Scoreboard Toggle: Standard Stinger (Cover -> Change -> Reveal)
     if (showScoreboard !== visibleScoreboard) {
         setIsTransitioning(true);
         const updateTimer = setTimeout(() => {
@@ -71,15 +72,21 @@ export const TVOverlay: React.FC<TVOverlayProps> = ({
         return () => { clearTimeout(updateTimer); clearTimeout(endTimer); };
     }
     
+    // Stats Toggle: User requested Sequence (Logo Appears -> Logo Disappears -> Stats Appear)
     if (showStatsOverlay !== visibleStats) {
-        setIsTransitioning(true);
-        const updateTimer = setTimeout(() => {
-            setVisibleStats(showStatsOverlay);
-        }, 500);
-        const endTimer = setTimeout(() => {
+        setIsTransitioning(true); // 1. Logo In
+        
+        // 2. Logo Out (after it fully appeared)
+        const hideLogoTimer = setTimeout(() => {
             setIsTransitioning(false);
-        }, 1100);
-        return () => { clearTimeout(updateTimer); clearTimeout(endTimer); };
+        }, 1000); // Wait 1s keeping logo, then hide
+
+        // 3. Stats Change (after logo is gone)
+        const showStatsTimer = setTimeout(() => {
+            setVisibleStats(showStatsOverlay);
+        }, 1600); // 1.0s + 0.6s transition out
+
+        return () => { clearTimeout(hideLogoTimer); clearTimeout(showStatsTimer); };
     }
   }, [showScoreboard, showStatsOverlay, visibleScoreboard, visibleStats]);
 
@@ -229,14 +236,23 @@ export const TVOverlay: React.FC<TVOverlayProps> = ({
   // Stats Logic
   const calculateTeamTotal = (teamId: string, type: 'attack' | 'block' | 'ace') => {
       let total = 0;
-      sets.forEach(set => {
+      // If specific set is selected, only count that set
+      const setsToCount = (match.statsSetIndex !== undefined && match.sets[match.statsSetIndex]) 
+          ? [match.sets[match.statsSetIndex]] 
+          : sets;
+
+      setsToCount.forEach(set => {
           total += (set.history || []).filter(h => h.teamId === teamId && h.type === type).length;
       });
       return total;
   };
   const calculateTeamErrors = (teamId: string) => {
       let total = 0;
-      sets.forEach(set => {
+      const setsToCount = (match.statsSetIndex !== undefined && match.sets[match.statsSetIndex]) 
+          ? [match.sets[match.statsSetIndex]] 
+          : sets;
+
+      setsToCount.forEach(set => {
            total += (set.history || []).filter(h => h.teamId !== teamId && h.type === 'opponent_error').length;
       });
       return total;
@@ -293,7 +309,6 @@ export const TVOverlay: React.FC<TVOverlayProps> = ({
       >
           <div className="flex flex-col items-center animate-pulse">
               {tournament?.logoUrl ? <img src={tournament.logoUrl} className="w-48 h-48 object-contain mb-4" /> : <div className="text-9xl">🏐</div>}
-              <h1 className="text-4xl font-black text-white uppercase italic tracking-widest">{tournament?.name}</h1>
           </div>
       </div>
 
@@ -413,16 +428,16 @@ export const TVOverlay: React.FC<TVOverlayProps> = ({
         <div className="absolute top-36 right-6 landscape:top-24 landscape:right-4 portrait:bottom-24 portrait:right-4 portrait:top-auto flex flex-col items-center gap-4 opacity-100 z-20 transition-all">
            {/* TikTok */}
            <button 
-             onClick={() => window.open('https://www.tiktok.com/live/studio', '_blank')}
+             onClick={() => setShowTikTokHelp(true)}
              className="flex flex-col items-center gap-2 group hover:scale-105 transition"
-             title="Abrir TikTok Live Studio (Externo)"
+             title="Cómo transmitir en TikTok"
            >
                <div className="w-12 h-12 bg-black/80 rounded-full flex items-center justify-center border-2 border-[#ff0050] group-hover:bg-[#ff0050] transition shadow-[0_0_15px_rgba(255,0,80,0.6)]">
                    <svg fill="#ffffff" width="20px" height="20px" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
                        <path d="M412.19,118.66a109.27,109.27,0,0,1-9.45-5.5,132.87,132.87,0,0,1-24.27-20.62c-18.1-20.71-24.86-41.72-27.35-56.43h.1C349.14,23.9,350,16,350.13,16H267.69V334.78c0,4.28,0,8.51-.18,12.69,0,45.25-35.31,81.93-78.88,81.93-43.58,0-78.89-36.68-78.89-81.93s35.31-81.93,78.89-81.93,77.54,77.54,0,0,1,31.74,6.75A79.44,79.44,0,0,1,232.06,278h79.14c-1.57-23.77-5.51-45.92-11.49-65.73-12.87-42.61-46.12-75.13-88.7-86.82-14-3.85-28.78-5.73-43.58-5.73-87.35,0-158.18,73.56-158.18,164.29C9.36,374.74,80.19,448.3,167.54,448.3c75.61,0,138.56-54.89,153.11-127.35.6-2.98.9-5.78,1.21-8.54V154.55c23.08,17.47,50.69,27.81,80.59,27.81a134.33,134.33,0,0,0,9.75-.41V118.66Z"/>
                    </svg>
                </div>
-               <span className="text-[8px] font-bold text-white bg-black/50 px-1 rounded">Abrir Studio</span>
+               <span className="text-[8px] font-bold text-white bg-black/50 px-1 rounded">Ayuda Live</span>
            </button>
            
            {/* Rotation View Toggle */}
@@ -438,15 +453,52 @@ export const TVOverlay: React.FC<TVOverlayProps> = ({
         </div>
       )}
 
+      {/* --- TIKTOK HELP MODAL --- */}
+      {showTikTokHelp && (
+          <div className="absolute inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-6 animate-in fade-in">
+              <div className="bg-slate-900 border border-white/20 rounded-2xl max-w-md w-full p-6 shadow-2xl">
+                  <div className="flex justify-between items-center mb-4 border-b border-white/10 pb-2">
+                      <h3 className="text-xl font-black text-white uppercase italic">Transmitir en TikTok</h3>
+                      <button onClick={() => setShowTikTokHelp(false)} className="text-slate-400 hover:text-white">✕</button>
+                  </div>
+                  <div className="space-y-4 text-sm text-slate-300">
+                      <p>Para transmitir este marcador en TikTok Live, necesitas usar <strong>TikTok Live Studio</strong> (PC) o una app de captura.</p>
+                      
+                      <div className="bg-black/40 p-3 rounded border border-white/5">
+                          <h4 className="font-bold text-white mb-2">Pasos Recomendados:</h4>
+                          <ol className="list-decimal list-inside space-y-2">
+                              <li>Abre esta vista en tu PC/Laptop.</li>
+                              <li>Descarga e instala <a href="https://www.tiktok.com/live/studio" target="_blank" className="text-pink-500 underline hover:text-pink-400">TikTok Live Studio</a>.</li>
+                              <li>En Live Studio, añade una fuente de <strong>"Captura de Ventana"</strong> o <strong>"Captura de Pantalla"</strong>.</li>
+                              <li>Selecciona esta ventana del navegador.</li>
+                              <li>¡Inicia tu transmisión!</li>
+                          </ol>
+                      </div>
+                      
+                      <div className="text-xs text-slate-500 italic">
+                          Nota: TikTok requiere 1000+ seguidores para habilitar Live Studio en algunas cuentas.
+                      </div>
+
+                      <button 
+                        onClick={() => window.open('https://www.tiktok.com/live/studio', '_blank')}
+                        className="w-full bg-[#ff0050] hover:bg-[#d60043] text-white font-bold py-3 rounded uppercase tracking-widest mt-2"
+                      >
+                          Descargar Live Studio
+                      </button>
+                  </div>
+              </div>
+          </div>
+      )}
+
       {/* --- ROTATION OVERLAY (COURT VISUALIZATION) --- */}
       {showRotationView && (
-          <div className="absolute inset-0 z-40 bg-black/90 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-300">
-              <div className="w-full max-w-3xl flex flex-col gap-4 scale-75 md:scale-90 origin-center">
+          <div className="absolute inset-0 z-40 flex items-center justify-center p-4 animate-in fade-in duration-300 pointer-events-none">
+              <div className="w-full max-w-3xl flex flex-col gap-4 scale-75 md:scale-90 origin-center pointer-events-auto">
                   <div className="flex justify-between items-center text-white px-4">
-                       <h2 className="text-xl font-black uppercase italic tracking-widest">Rotación</h2>
+                       <h2 className="text-xl font-black uppercase italic tracking-widest drop-shadow-md">Rotación</h2>
                        <button 
                           onClick={() => setShowRotationView(false)}
-                          className="bg-white/10 hover:bg-white/20 text-white w-8 h-8 rounded-full flex items-center justify-center transition"
+                          className="bg-black/40 hover:bg-black/60 text-white w-8 h-8 rounded-full flex items-center justify-center transition backdrop-blur-sm border border-white/20"
                       >
                           ✕
                       </button>
@@ -454,11 +506,11 @@ export const TVOverlay: React.FC<TVOverlayProps> = ({
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 h-full">
                       {/* Team A Court */}
-                      <div className="relative bg-[#ffb07c] border-2 border-white shadow-2xl overflow-hidden aspect-square rounded-lg">
+                      <div className="relative bg-black/20 border-2 border-white/80 shadow-2xl overflow-hidden aspect-square rounded-lg backdrop-blur-sm">
                           {/* Court Lines */}
                           <div className="absolute top-1/3 left-0 right-0 h-1 bg-white/80"></div> {/* Attack Line */}
-                          <div className="absolute inset-0 flex items-center justify-center opacity-10 pointer-events-none">
-                              {teamA.logoUrl ? <img src={teamA.logoUrl} className="w-48 h-48 object-contain grayscale" /> : <div className="text-9xl font-black text-black">{teamA.name[0]}</div>}
+                          <div className="absolute inset-0 flex items-center justify-center opacity-30 pointer-events-none">
+                              {teamA.logoUrl ? <img src={teamA.logoUrl} className="w-48 h-48 object-contain" /> : <div className="text-9xl font-black text-white">{teamA.name[0]}</div>}
                           </div>
                           
                           {/* Team Name Label */}
@@ -513,11 +565,11 @@ export const TVOverlay: React.FC<TVOverlayProps> = ({
                       </div>
 
                       {/* Team B Court */}
-                      <div className="relative bg-[#ffb07c] border-2 border-white shadow-2xl overflow-hidden aspect-square rounded-lg">
+                      <div className="relative bg-black/20 border-2 border-white/80 shadow-2xl overflow-hidden aspect-square rounded-lg backdrop-blur-sm">
                           {/* Court Lines */}
                           <div className="absolute top-1/3 left-0 right-0 h-1 bg-white/80"></div> {/* Attack Line */}
-                          <div className="absolute inset-0 flex items-center justify-center opacity-10 pointer-events-none">
-                              {teamB.logoUrl ? <img src={teamB.logoUrl} className="w-48 h-48 object-contain grayscale" /> : <div className="text-9xl font-black text-black">{teamB.name[0]}</div>}
+                          <div className="absolute inset-0 flex items-center justify-center opacity-30 pointer-events-none">
+                              {teamB.logoUrl ? <img src={teamB.logoUrl} className="w-48 h-48 object-contain" /> : <div className="text-9xl font-black text-white">{teamB.name[0]}</div>}
                           </div>
 
                           {/* Team Name Label */}
@@ -581,7 +633,9 @@ export const TVOverlay: React.FC<TVOverlayProps> = ({
                     </div>
                     <div className="flex flex-col items-center mb-2">
                          <span className="text-yellow-400 font-black italic text-3xl">VS</span>
-                         <span className="text-gray-300 text-[10px] uppercase font-bold tracking-[0.2em]">ESTADÍSTICAS</span>
+                         <span className="text-gray-300 text-[10px] uppercase font-bold tracking-[0.2em]">
+                             {match.statsSetIndex !== undefined ? `ESTADÍSTICAS SET ${match.statsSetIndex + 1}` : 'ESTADÍSTICAS TOTALES'}
+                         </span>
                     </div>
                     <div className="flex flex-col items-center w-1/4">
                          {teamB.logoUrl ? <img src={teamB.logoUrl} className="w-14 h-14 object-contain bg-white rounded-lg p-1" /> : <div className="w-14 h-14 bg-red-900 rounded-lg flex items-center justify-center font-bold text-2xl">{teamB.name[0]}</div>}
@@ -724,7 +778,7 @@ export const TVOverlay: React.FC<TVOverlayProps> = ({
                                 </div>
                             </div>
                         </div>
-                        <div className="text-3xl md:text-5xl font-black text-white tabular-nums tracking-tighter drop-shadow-md z-10 pl-2">
+                        <div className="w-20 text-center text-3xl md:text-5xl font-black text-white tabular-nums tracking-tighter drop-shadow-md z-10 pl-2">
                             {match.scoreA}
                         </div>
                     </div>
@@ -786,7 +840,7 @@ export const TVOverlay: React.FC<TVOverlayProps> = ({
                                 </div>
                             </div>
                         </div>
-                        <div className={`text-3xl md:text-5xl font-black text-white tabular-nums tracking-tighter drop-shadow-md z-10 
+                        <div className={`w-20 text-center text-3xl md:text-5xl font-black text-white tabular-nums tracking-tighter drop-shadow-md z-10 
                             ${isVertical ? 'pr-2' : 'pr-2'}
                         `}>
                             {match.scoreB}

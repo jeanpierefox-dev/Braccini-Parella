@@ -117,6 +117,11 @@ export const generateSmartFixture = async (
             // Safety check for fixtures
             const fixtures = Array.isArray(data.fixtures) ? data.fixtures : [];
 
+            if (fixtures.length === 0) {
+                console.warn("AI returned empty fixtures, using fallback");
+                return generateBasicFixture(teams, startDate, endDate, matchDays);
+            }
+
             return { groups: groupsMap, fixtures };
 
         } catch (err: any) {
@@ -161,8 +166,15 @@ export const generateBasicFixture = (teams: Team[], startDate: string, endDate: 
   // 1. Calculate available dates correctly using UTC to avoid timezone shifts
   const dates: string[] = [];
   // Ensure valid date objects
-  const start = isNaN(new Date(startDate).getTime()) ? new Date() : new Date(startDate); 
-  const end = isNaN(new Date(endDate).getTime()) ? new Date(start.getTime() + 86400000 * 30) : new Date(endDate);
+  // Parse YYYY-MM-DD strings as UTC midnight to avoid timezone shifts
+  const parseDate = (d: string) => {
+      if (!d) return new Date();
+      const [y, m, day] = d.split('-').map(Number);
+      return new Date(Date.UTC(y, m - 1, day));
+  };
+
+  const start = parseDate(startDate);
+  const end = parseDate(endDate);
   
   // Mapping Spanish days to JS getUTCDay() (0=Sunday, 1=Monday...)
   const dayMap: Record<string, number> = {

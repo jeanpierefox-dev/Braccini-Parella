@@ -1401,7 +1401,8 @@ export const App: React.FC = () => {
               showNextButton={canControlMatch && liveMatch?.status === 'finished_set'}
               onShowOnTV={() => {
                   if (canControlMatch) {
-                      updateLiveMatch(prev => prev ? { ...prev, showStats: true, showScoreboard: false } : null);
+                      // Show stats for THIS specific set (setNumber - 1 because array is 0-indexed)
+                      updateLiveMatch(prev => prev ? { ...prev, showStats: true, showScoreboard: false, statsSetIndex: viewingSetStats.setNum - 1 } : null);
                   }
               }}
           />
