@@ -39,7 +39,7 @@ export const TVOverlay: React.FC<TVOverlayProps> = ({
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [visibleScoreboard, setVisibleScoreboard] = useState(showScoreboard);
   const [visibleStats, setVisibleStats] = useState(showStatsOverlay);
-  const [showRotationView, setShowRotationView] = useState(false);
+  // const [showRotationView, setShowRotationView] = useState(false); // Removed, now using match.showRotation
 
   // Camera Selection State
   const [videoDevices, setVideoDevices] = useState<MediaDeviceInfo[]>([]);
@@ -445,16 +445,7 @@ export const TVOverlay: React.FC<TVOverlayProps> = ({
                <span className="text-[8px] font-bold text-white bg-black/50 px-1 rounded">Compartir</span>
            </button>
            
-           {/* Rotation View Toggle */}
-           <button 
-             onClick={() => setShowRotationView(!showRotationView)}
-             className={`flex flex-col items-center gap-2 group hover:scale-105 transition ${showRotationView ? 'opacity-100' : 'opacity-80'}`}
-             title="Ver Rotación"
-           >
-               <div className={`w-12 h-12 rounded-full flex items-center justify-center border-2 transition shadow-lg ${showRotationView ? 'bg-yellow-500 border-yellow-300 text-black' : 'bg-black/80 border-white/30 text-white'}`}>
-                   <span className="font-black text-xl">R</span>
-               </div>
-           </button>
+           {/* Rotation View Toggle (REMOVED - Controlled by Admin Panel) */}
         </div>
       )}
 
@@ -496,17 +487,12 @@ export const TVOverlay: React.FC<TVOverlayProps> = ({
       )}
 
       {/* --- ROTATION OVERLAY (COURT VISUALIZATION) --- */}
-      {showRotationView && (
+      {match.showRotation && (
           <div className="absolute inset-0 z-40 flex items-center justify-center p-4 animate-in fade-in duration-300 pointer-events-none">
               <div className="w-full max-w-3xl flex flex-col gap-4 scale-75 md:scale-90 origin-center pointer-events-auto">
                   <div className="flex justify-between items-center text-white px-4">
                        <h2 className="text-xl font-black uppercase italic tracking-widest drop-shadow-md">Rotación</h2>
-                       <button 
-                          onClick={() => setShowRotationView(false)}
-                          className="bg-black/40 hover:bg-black/60 text-white w-8 h-8 rounded-full flex items-center justify-center transition backdrop-blur-sm border border-white/20"
-                      >
-                          ✕
-                      </button>
+                       {/* Close button removed as it's controlled by Admin */}
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 h-full">
@@ -741,7 +727,7 @@ export const TVOverlay: React.FC<TVOverlayProps> = ({
           </div>
       ) : (
           /* --- SCOREBOARD (RESPONSIVE VERTICAL/HORIZONTAL) --- */
-          visibleScoreboard && !isPreMatch && !showRotationView && (
+          visibleScoreboard && !isPreMatch && !match.showRotation && (
             <div className={`relative z-10 w-full mx-auto px-2 md:px-4 absolute 
                 ${isVertical 
                     ? 'top-32 max-w-sm' 

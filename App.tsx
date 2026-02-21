@@ -897,6 +897,14 @@ export const App: React.FC = () => {
       setShowRotationModal(null);
   };
 
+  const handleToggleRotationView = () => {
+      if (!liveMatch) return;
+      const newState = !liveMatch.showRotation;
+      const updated = { ...liveMatch, showRotation: newState };
+      setLiveMatch(updated);
+      pushData('liveMatch', updated);
+  };
+
   // --- RENDER HELPERS ---
 
   if (!currentUser) {
@@ -1205,6 +1213,8 @@ export const App: React.FC = () => {
                                 onRequestSub={initiateSubRequest}
                                 onModifyRotation={initiateRotationCheck}
                                 onSetServe={handleSetServe}
+                                onToggleRotationView={handleToggleRotationView}
+                                showRotationView={liveMatch.showRotation}
                                 teamId={activeTournament.fixtures?.find(f => f.id === liveMatch.matchId)?.teamAId!}
                                 teamName={activeTournament.teams.find(t => t.id === activeTournament.fixtures?.find(f => f.id === liveMatch.matchId)?.teamAId)?.name!}
                                 players={liveMatch.rotationA}

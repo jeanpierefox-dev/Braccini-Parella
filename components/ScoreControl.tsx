@@ -11,6 +11,8 @@ interface ScoreControlProps {
   onRequestSub: (teamId: string) => void;
   onModifyRotation: (teamId: string) => void;
   onSetServe: (teamId: string) => void;
+  onToggleRotationView?: () => void; // New prop
+  showRotationView?: boolean; // New prop
   teamId: string;
   teamName: string;
   players: Player[]; 
@@ -29,6 +31,8 @@ export const ScoreControl: React.FC<ScoreControlProps> = ({
   onRequestSub,
   onModifyRotation,
   onSetServe,
+  onToggleRotationView,
+  showRotationView,
   teamId,
   teamName,
   players,
@@ -106,6 +110,17 @@ export const ScoreControl: React.FC<ScoreControlProps> = ({
               >
                 -1
               </button>
+            )}
+            
+            {/* Rotation View Toggle (Admin Only) */}
+            {isAdmin && onToggleRotationView && (
+                <button 
+                    onClick={onToggleRotationView}
+                    className={`ml-2 w-8 h-8 rounded-full flex items-center justify-center border transition-all ${showRotationView ? 'bg-blue-500 border-blue-400 text-white shadow-[0_0_10px_blue]' : 'bg-black/40 border-white/10 text-slate-500 hover:text-white'}`}
+                    title="Mostrar/Ocultar Rotación en Pantalla"
+                >
+                    <span className="text-xs font-black">R</span>
+                </button>
             )}
           </div>
           {(isAdmin || isTeamCoach) && (
