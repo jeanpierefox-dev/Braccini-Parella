@@ -394,7 +394,12 @@ export const TVOverlay: React.FC<TVOverlayProps> = ({
 
       {/* --- TOURNAMENT LOGO (TOP RIGHT) --- */}
       {tournament?.logoUrl && (
-          <div className="absolute top-4 right-4 landscape:top-2 landscape:right-2 portrait:top-16 portrait:right-4 z-40 landscape:scale-75 portrait:scale-90 origin-top-right transition-all pointer-events-none">
+          <div className={`absolute z-40 transition-all duration-500 pointer-events-none origin-top-right
+              ${isVertical 
+                  ? 'top-16 right-4 scale-90' 
+                  : 'top-2 right-2 scale-75'
+              }
+          `}>
               <img 
                 src={tournament.logoUrl} 
                 alt="Torneo" 
@@ -410,13 +415,14 @@ export const TVOverlay: React.FC<TVOverlayProps> = ({
            <button 
              onClick={() => window.open('https://www.tiktok.com/live/studio', '_blank')}
              className="flex flex-col items-center gap-2 group hover:scale-105 transition"
-             title="Ir a TikTok Live Studio"
+             title="Abrir TikTok Live Studio (Externo)"
            >
                <div className="w-12 h-12 bg-black/80 rounded-full flex items-center justify-center border-2 border-[#ff0050] group-hover:bg-[#ff0050] transition shadow-[0_0_15px_rgba(255,0,80,0.6)]">
                    <svg fill="#ffffff" width="20px" height="20px" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
                        <path d="M412.19,118.66a109.27,109.27,0,0,1-9.45-5.5,132.87,132.87,0,0,1-24.27-20.62c-18.1-20.71-24.86-41.72-27.35-56.43h.1C349.14,23.9,350,16,350.13,16H267.69V334.78c0,4.28,0,8.51-.18,12.69,0,45.25-35.31,81.93-78.88,81.93-43.58,0-78.89-36.68-78.89-81.93s35.31-81.93,78.89-81.93,77.54,77.54,0,0,1,31.74,6.75A79.44,79.44,0,0,1,232.06,278h79.14c-1.57-23.77-5.51-45.92-11.49-65.73-12.87-42.61-46.12-75.13-88.7-86.82-14-3.85-28.78-5.73-43.58-5.73-87.35,0-158.18,73.56-158.18,164.29C9.36,374.74,80.19,448.3,167.54,448.3c75.61,0,138.56-54.89,153.11-127.35.6-2.98.9-5.78,1.21-8.54V154.55c23.08,17.47,50.69,27.81,80.59,27.81a134.33,134.33,0,0,0,9.75-.41V118.66Z"/>
                    </svg>
                </div>
+               <span className="text-[8px] font-bold text-white bg-black/50 px-1 rounded">Abrir Studio</span>
            </button>
            
            {/* Rotation View Toggle */}
@@ -677,7 +683,7 @@ export const TVOverlay: React.FC<TVOverlayProps> = ({
       ) : (
           /* --- SCOREBOARD (RESPONSIVE VERTICAL/HORIZONTAL) --- */
           visibleScoreboard && !isPreMatch && (
-            <div className={`relative z-10 w-full mx-auto px-2 md:px-4 transition-all absolute 
+            <div className={`relative z-10 w-full mx-auto px-2 md:px-4 absolute 
                 ${isVertical 
                     ? 'top-32 max-w-sm' 
                     : 'top-20 md:bottom-6 md:top-auto max-w-6xl'
