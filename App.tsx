@@ -126,6 +126,7 @@ export const App: React.FC = () => {
 
   // --- CLOUD SYNC INITIALIZATION ---
   useEffect(() => {
+      // 1. Check for Firebase Config (Legacy/Production)
       const linkData = checkForSyncLink();
       let configToUse = null;
       let orgToUse = null;
@@ -139,17 +140,22 @@ export const App: React.FC = () => {
               orgToUse = saved.organizationId;
           }
       }
+
       if (configToUse && orgToUse) {
           const success = initCloud(configToUse, orgToUse);
           if (success) {
               setIsCloudConnected(true);
           }
+      } else {
+          // 2. Default to WebSocket (Preview/Local)
+          // We assume WebSocket is always available in this environment
+          setIsCloudConnected(true);
       }
   }, []);
 
   // --- CLOUD SYNC LISTENERS ---
   useEffect(() => {
-      if (!isCloudConnected) return;
+      // Always sync (WebSocket handles connection internally if no Firebase)
       const normalizeArray = <T,>(val: any): T[] => {
           if (!val) return [];
           if (Array.isArray(val)) return val.filter(i => !!i); 

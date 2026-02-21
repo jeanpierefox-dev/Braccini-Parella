@@ -47,27 +47,100 @@ export const testConnection = async (): Promise<{ success: boolean; message?: st
     }
 };
 
+// --- WEBSOCKET CLIENT ---
+let socket: WebSocket | null = null;
+const listeners: { [key: string]: ((data: any) => void)[] } = {}; // Array of listeners
+
+const connectSocket = () => {
+    const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+    const host = window.location.host;
+    socket = new WebSocket(`${protocol}://${host}`);
+
+    socket.onopen = () => {
+        console.log('Connected to WebSocket server');
+        socket?.send(JSON.stringify({ type: 'SYNC_REQUEST' }));
+    };
+
+    socket.onmessage = (event) => {
+        try {
+            const message = JSON.parse(event.data);
+            if (message.type === 'INIT') {
+                // Initial sync
+                Object.keys(message.data).forEach(key => {
+                    if (listeners[key]) {
+                        listeners[key].forEach(cb => cb(message.data[key]));
+                    }
+                });
+            } else if (message.type === 'UPDATE') {
+                const { path, data } = message;
+                if (listeners[path]) {
+                    listeners[path].forEach(cb => cb(data));
+                }
+            }
+        } catch (e) {
+            console.error('Error parsing WebSocket message', e);
+        }
+    };
+
+    socket.onclose = () => {
+        console.log('Disconnected from WebSocket server');
+        // Simple reconnect logic
+        setTimeout(connectSocket, 3000);
+    };
+};
+
+export const initSocket = () => {
+    if (!socket) connectSocket();
+};
+
 export const syncData = <T>(path: string, onData: (data: T | null) => void) => {
-    if (!db) return () => {};
-    const dataRef = ref(db, `${orgId}/${path}`);
-    const unsubscribe = onValue(dataRef, (snapshot) => {
-        const val = snapshot.val();
-        // Always pass the value, even if null, so the app knows it's empty
-        onData(val);
-    });
-    return unsubscribe;
+    // Register listener
+    if (!listeners[path]) listeners[path] = [];
+    listeners[path].push(onData);
+    
+    // If using Firebase (legacy/production config)
+    if (db) {
+        const dataRef = ref(db, `${orgId}/${path}`);
+        const unsubscribe = onValue(dataRef, (snapshot) => {
+            const val = snapshot.val();
+            onData(val);
+        });
+        return unsubscribe;
+    }
+
+    // If using WebSocket (default/preview)
+    if (!socket && !db) {
+        initSocket();
+    }
+    
+    return () => {
+        listeners[path] = listeners[path].filter(cb => cb !== onData);
+    };
 };
 
 export const pushData = async (path: string, data: any) => {
-    if (!db) return;
-    const dataRef = ref(db, `${orgId}/${path}`);
-    try {
-        // Firebase does not allow 'undefined', so we strip it.
-        // JSON.stringify removes undefined keys, and JSON.parse rebuilds the object without them.
-        const cleanData = JSON.parse(JSON.stringify(data));
-        await set(dataRef, cleanData);
-    } catch (e) {
-        console.error("Sync Error:", e);
+    // Firebase
+    if (db) {
+        const dataRef = ref(db, `${orgId}/${path}`);
+        try {
+            const cleanData = JSON.parse(JSON.stringify(data));
+            await set(dataRef, cleanData);
+        } catch (e) {
+            console.error("Sync Error:", e);
+        }
+        return;
+    }
+
+    // WebSocket
+    if (socket && socket.readyState === WebSocket.OPEN) {
+        socket.send(JSON.stringify({ type: 'UPDATE', path, data }));
+    } else if (socket) {
+        // Retry once if connecting
+        setTimeout(() => {
+             if (socket && socket.readyState === WebSocket.OPEN) {
+                socket.send(JSON.stringify({ type: 'UPDATE', path, data }));
+             }
+        }, 1000);
     }
 };
 

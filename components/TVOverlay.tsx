@@ -614,7 +614,7 @@ export const TVOverlay: React.FC<TVOverlayProps> = ({
       )}
 
       {/* --- COMPARATIVE STATS OVERLAY --- */}
-      {visibleStats && !matchEnded && (
+      {visibleStats && !matchEnded && !match.showRotation && (
         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-full max-w-2xl px-2 z-40 transition-transform scale-75 md:scale-90">
             <div className="bg-slate-900/70 backdrop-blur-md border border-white/20 rounded-3xl overflow-hidden shadow-[0_0_50px_rgba(0,0,0,0.5)]">
                  <div className="bg-gradient-to-b from-white/10 to-transparent p-4 flex justify-between items-end border-b border-white/10">
