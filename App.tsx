@@ -935,6 +935,7 @@ export const App: React.FC = () => {
   // --- NEW: Render TV Overlay directly (Full Screen, No Layout) if in TV Mode ---
   if (tvMode && liveMatch && activeTournament) {
       return (
+        <>
           <TVOverlay 
             match={liveMatch}
             teamA={activeTournament.teams.find(t => t.id === activeTournament?.fixtures?.find(f => f.id === liveMatch.matchId)?.teamAId)!}
@@ -950,7 +951,57 @@ export const App: React.FC = () => {
             showStatsOverlay={liveMatch.showStats}
             showScoreboard={liveMatch.showScoreboard}
             isCloudConnected={isCloudConnected}
+            onUpdateMatch={(updates) => {
+                if (!liveMatch) return;
+                const updatedMatch = { ...liveMatch, ...updates };
+                setLiveMatch(updatedMatch);
+                pushData('liveMatch', updatedMatch);
+            }}
+            // Control Handlers
+            onPoint={handlePoint}
+            onSubtractPoint={handleSubtractPoint}
+            onRequestTimeout={handleRequestTimeout}
+            onRequestSub={initiateSubRequest}
+            onModifyRotation={initiateRotationCheck}
+            onSetServe={handleSetServe}
           />
+          
+          {/* Substitution Modal (TV Mode) */}
+          {showSubModal && liveMatch && activeTournament && (
+              <div className="fixed inset-0 bg-black/80 z-[110] flex items-center justify-center p-4 backdrop-blur-sm">
+                  <div className="bg-vnl-panel border border-white/20 p-6 w-full max-w-sm shadow-2xl">
+                      <h3 className="text-lg font-black text-white uppercase italic tracking-tighter mb-4 text-center">Realizar Cambio</h3>
+                      <div className="flex items-center justify-center gap-4 mb-6">
+                           <div className="text-center">
+                               <label className="block text-[9px] font-bold text-slate-500 uppercase mb-1">Sale (#)</label>
+                               <input 
+                                 type="number" 
+                                 value={subPlayerOutNum} 
+                                 onChange={e => setSubPlayerOutNum(e.target.value)} 
+                                 className="w-16 h-16 bg-red-900/20 border border-red-500/50 text-white font-black text-2xl text-center rounded focus:outline-none focus:border-red-500"
+                                 placeholder="OUT"
+                               />
+                           </div>
+                           <span className="text-2xl text-slate-500">→</span>
+                           <div className="text-center">
+                               <label className="block text-[9px] font-bold text-slate-500 uppercase mb-1">Entra (#)</label>
+                               <input 
+                                 type="number" 
+                                 value={subPlayerInNum} 
+                                 onChange={e => setSubPlayerInNum(e.target.value)} 
+                                 className="w-16 h-16 bg-green-900/20 border border-green-500/50 text-white font-black text-2xl text-center rounded focus:outline-none focus:border-green-500"
+                                 placeholder="IN"
+                               />
+                           </div>
+                      </div>
+                      <div className="flex gap-2">
+                          <button onClick={() => setShowSubModal(null)} className="flex-1 bg-white/10 hover:bg-white/20 text-white py-3 rounded text-xs font-bold uppercase">Cancelar</button>
+                          <button onClick={handleConfirmSub} className="flex-1 bg-vnl-accent hover:bg-cyan-400 text-black py-3 rounded text-xs font-black uppercase shadow-[0_0_15px_rgba(6,182,212,0.3)]">Confirmar</button>
+                      </div>
+                  </div>
+              </div>
+          )}
+          </>
       );
   }
   

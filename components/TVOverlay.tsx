@@ -1,9 +1,12 @@
 
 import React, { useEffect, useRef, useState } from 'react';
+import { Peer } from 'peerjs';
 import { LiveMatchState, Team, Tournament, User } from '../types';
+import { ScoreControl } from './ScoreControl';
 
 interface TVOverlayProps {
   match: LiveMatchState;
+  onUpdateMatch?: (updates: Partial<LiveMatchState>) => void;
   teamA: Team;
   teamB: Team;
   tournament?: Tournament | null;
@@ -16,6 +19,13 @@ interface TVOverlayProps {
   showStatsOverlay?: boolean;
   showScoreboard?: boolean;
   isCloudConnected?: boolean;
+  // Control Handlers
+  onPoint?: (teamId: string, type: 'attack' | 'block' | 'ace' | 'opponent_error' | 'yellow_card' | 'red_card', playerId?: string) => void;
+  onSubtractPoint?: (teamId: string) => void;
+  onRequestTimeout?: (teamId: string) => void;
+  onRequestSub?: (teamId: string) => void;
+  onModifyRotation?: (teamId: string) => void;
+  onSetServe?: (teamId: string) => void;
 }
 
 export const TVOverlay: React.FC<TVOverlayProps> = ({ 
@@ -29,11 +39,25 @@ export const TVOverlay: React.FC<TVOverlayProps> = ({
   nextSetCountdown,
   showStatsOverlay = false,
   showScoreboard = true,
-  isCloudConnected = true
+  isCloudConnected = true,
+  onUpdateMatch,
+  onPoint,
+  onSubtractPoint,
+  onRequestTimeout,
+  onRequestSub,
+  onModifyRotation,
+  onSetServe
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const isViewer = currentUser?.role === 'VIEWER';
   const isAdmin = currentUser?.role === 'ADMIN' || currentUser?.role?.includes('COACH');
+
+  // PeerJS State
+  const [isBroadcasting, setIsBroadcasting] = useState(false);
+  const [viewerStream, setViewerStream] = useState<MediaStream | null>(null);
+  
+  // Controls State
+  const [showControls, setShowControls] = useState(false);
 
   // Transition States (Stinger)
   const [isTransitioning, setIsTransitioning] = useState(false);
@@ -47,6 +71,57 @@ export const TVOverlay: React.FC<TVOverlayProps> = ({
   const [showSettings, setShowSettings] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [showTikTokHelp, setShowTikTokHelp] = useState(false);
+  const [showOBSHelp, setShowOBSHelp] = useState(false);
+
+  // PeerJS Logic (Admin - Broadcaster)
+  useEffect(() => {
+      if (!isAdmin || !isBroadcasting || !videoRef.current || !videoRef.current.srcObject) return;
+
+      const stream = videoRef.current.srcObject as MediaStream;
+      const peer = new Peer();
+
+      peer.on('open', (id) => {
+          console.log('My peer ID is: ' + id);
+          if (onUpdateMatch) {
+              onUpdateMatch({ adminPeerId: id });
+          }
+      });
+
+      peer.on('call', (call) => {
+          call.answer(stream); // Answer the call with an A/V stream.
+      });
+
+      return () => {
+          peer.destroy();
+          if (onUpdateMatch) {
+             // onUpdateMatch({ adminPeerId: undefined }); // Optional: clear ID on stop
+          }
+      };
+  }, [isAdmin, isBroadcasting, selectedDeviceId]); // Re-run if camera changes
+
+  // PeerJS Logic (Viewer - Receiver)
+  useEffect(() => {
+      if (!isViewer || !match.adminPeerId || viewerStream) return;
+
+      const peer = new Peer();
+
+      peer.on('open', () => {
+          // const conn = peer.connect(match.adminPeerId!); // Not needed for stream only
+          const call = peer.call(match.adminPeerId!, new MediaStream()); // Call to get stream
+
+          call.on('stream', (remoteStream) => {
+              setViewerStream(remoteStream);
+              if (videoRef.current) {
+                  videoRef.current.srcObject = remoteStream;
+                  videoRef.current.play().catch(e => console.error("Error playing remote stream", e));
+              }
+          });
+      });
+
+      return () => {
+          peer.destroy();
+      };
+  }, [isViewer, match.adminPeerId]);
 
   // Determine if it's "Pre-Match" based on status
   const isPreMatch = match.status === 'warmup';
@@ -272,12 +347,12 @@ export const TVOverlay: React.FC<TVOverlayProps> = ({
     <div className="fixed inset-0 z-[100] flex flex-col justify-end pb-0 font-sans bg-transparent overflow-hidden transition-all duration-300">
       
       {/* Background */}
-      {!isViewer && !cameraError ? (
+      {(!isViewer && !cameraError) || (isViewer && viewerStream) ? (
         <video 
             ref={videoRef}
             autoPlay 
             playsInline 
-            muted 
+            muted={!isViewer}
             className="absolute inset-0 w-full h-full object-cover"
             style={{ zIndex: -1 }} 
         />
@@ -331,6 +406,24 @@ export const TVOverlay: React.FC<TVOverlayProps> = ({
                     >
                         <span>🎛️</span> Panel de Control
                     </button>
+
+                    {/* Controls Toggle */}
+                    <button 
+                        onClick={() => setShowControls(!showControls)}
+                        className={`px-3 py-3 rounded-lg text-xs font-bold transition backdrop-blur-md border border-white/20 shadow-lg ${showControls ? 'bg-green-600 text-white' : 'bg-black/60 hover:bg-white text-white hover:text-black'}`}
+                        title="Controles de Marcador"
+                    >
+                        🎮
+                    </button>
+                    
+                    {/* OBS Help Toggle */}
+                    <button 
+                        onClick={() => setShowOBSHelp(!showOBSHelp)}
+                        className={`px-3 py-3 rounded-lg text-xs font-bold transition backdrop-blur-md border border-white/20 shadow-lg ${showOBSHelp ? 'bg-purple-600 text-white' : 'bg-black/60 hover:bg-white text-white hover:text-black'}`}
+                        title="Instrucciones OBS Studio"
+                    >
+                        🎥
+                    </button>
                     
                     {/* Camera Settings Toggle */}
                     <button 
@@ -366,7 +459,7 @@ export const TVOverlay: React.FC<TVOverlayProps> = ({
                       {/* Aspect Ratio Toggle */}
                       <div>
                           <label className="block text-[9px] font-black text-slate-400 uppercase mb-2 tracking-widest">Formato de Transmisión</label>
-                          <div className="flex gap-2">
+                          <div className="flex gap-2 mb-4">
                               <button 
                                 onClick={() => setAspectRatio('16:9')}
                                 className={`flex-1 py-2 rounded text-[10px] font-bold uppercase border ${aspectRatio === '16:9' ? 'bg-corp-accent border-corp-accent text-white' : 'bg-white/5 border-white/10 text-slate-400'}`}
@@ -380,6 +473,16 @@ export const TVOverlay: React.FC<TVOverlayProps> = ({
                                   Vertical (TikTok)
                               </button>
                           </div>
+
+                          {/* Broadcast Button */}
+                          {selectedDeviceId && (
+                              <button 
+                                  onClick={() => setIsBroadcasting(!isBroadcasting)}
+                                  className={`w-full py-3 rounded text-xs font-black uppercase tracking-widest border ${isBroadcasting ? 'bg-red-600 border-red-600 text-white animate-pulse' : 'bg-green-600 border-green-600 text-white'}`}
+                              >
+                                  {isBroadcasting ? '🔴 Detener Transmisión' : '📡 Iniciar Transmisión'}
+                              </button>
+                          )}
                       </div>
                   </div>
               )}
@@ -447,6 +550,49 @@ export const TVOverlay: React.FC<TVOverlayProps> = ({
            
            {/* Rotation View Toggle (REMOVED - Controlled by Admin Panel) */}
         </div>
+      )}
+
+      {/* --- OBS HELP MODAL --- */}
+      {showOBSHelp && (
+          <div className="absolute inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-6 animate-in fade-in">
+              <div className="bg-slate-900 border border-white/20 rounded-2xl max-w-lg w-full p-6 shadow-2xl overflow-y-auto max-h-[90vh]">
+                  <div className="flex justify-between items-center mb-4 border-b border-white/10 pb-2">
+                      <h3 className="text-xl font-black text-white uppercase italic">Transmitir con OBS Studio</h3>
+                      <button onClick={() => setShowOBSHelp(false)} className="text-slate-400 hover:text-white">✕</button>
+                  </div>
+                  <div className="space-y-4 text-sm text-slate-300">
+                      <p>Para una transmisión profesional a Facebook, YouTube o Twitch, usa <strong>OBS Studio</strong>.</p>
+                      
+                      <div className="bg-black/40 p-3 rounded border border-white/5">
+                          <h4 className="font-bold text-white mb-2">Pasos para Configurar:</h4>
+                          <ol className="list-decimal list-inside space-y-2 marker:text-purple-500">
+                              <li>Descarga e instala <a href="https://obsproject.com/" target="_blank" className="text-purple-400 underline hover:text-purple-300">OBS Studio</a>.</li>
+                              <li>En OBS, ve al panel de <strong>"Fuentes"</strong> (Sources) y haz clic en el botón <strong>+</strong>.</li>
+                              <li>Selecciona <strong>"Captura de Ventana"</strong> (Window Capture).</li>
+                              <li>Elige la ventana de tu navegador donde está esta aplicación.</li>
+                              <li>Si quieres usar tu cámara web, añade una fuente de <strong>"Dispositivo de Captura de Video"</strong> y colócala <em>debajo</em> de la capa del marcador.</li>
+                              <li>Ajusta el tamaño y posición de los elementos en la vista previa.</li>
+                              <li>Ve a <strong>Ajustes &gt; Emisión</strong>, selecciona tu servicio (Facebook Live, YouTube, etc.) y pega tu Clave de Transmisión.</li>
+                              <li>Haz clic en <strong>"Iniciar Transmisión"</strong>.</li>
+                          </ol>
+                      </div>
+                      
+                      <div className="bg-purple-900/20 p-3 rounded border border-purple-500/30">
+                          <h4 className="font-bold text-purple-200 mb-1">💡 Tip Pro:</h4>
+                          <p className="text-xs">
+                              Para un fondo transparente perfecto, asegúrate de que no haya ninguna cámara activa en esta aplicación (usa el botón 📷 para desactivarla si es necesario). El fondo negro/transparente se puede eliminar en OBS usando un filtro de "Clave de Color" (Color Key) si es necesario, pero esta vista ya está optimizada.
+                          </p>
+                      </div>
+
+                      <button 
+                        onClick={() => window.open('https://obsproject.com/', '_blank')}
+                        className="w-full bg-purple-600 hover:bg-purple-500 text-white font-bold py-3 rounded uppercase tracking-widest mt-2 shadow-lg"
+                      >
+                          Descargar OBS Studio
+                      </button>
+                  </div>
+              </div>
+          </div>
       )}
 
       {/* --- TIKTOK HELP MODAL --- */}
@@ -760,8 +906,8 @@ export const TVOverlay: React.FC<TVOverlayProps> = ({
                                 {teamA.logoUrl ? <img src={teamA.logoUrl} className="w-full h-full object-contain" /> : <div className="text-blue-900 font-bold text-lg md:text-xl flex items-center justify-center h-full">{teamA.name[0]}</div>}
                                 {match.servingTeamId === teamA.id && <div className="absolute -top-1 -left-1 text-lg bg-white rounded-full leading-none shadow-sm border border-slate-200">🏐</div>}
                             </div>
-                            <div className="flex flex-col">
-                                <h2 className="text-white font-black uppercase italic tracking-tighter text-sm md:text-xl leading-none">{teamA.name}</h2>
+                            <div className="flex flex-col min-w-0">
+                                <h2 className="text-white font-black uppercase italic tracking-tighter text-sm md:text-xl leading-none truncate max-w-[100px] md:max-w-[200px]">{teamA.name}</h2>
                                 <div className="flex gap-1 mt-1">
                                     {sets.filter(s => s.scoreA > s.scoreB && Math.max(s.scoreA, s.scoreB) >= (match.currentSet === match.config.maxSets ? match.config.tieBreakPoints : match.config.pointsPerSet)).map((_,i) => (
                                         <div key={i} className="w-2 h-2 md:w-3 md:h-3 bg-yellow-400 rounded-full border border-yellow-600"></div>
@@ -769,7 +915,7 @@ export const TVOverlay: React.FC<TVOverlayProps> = ({
                                 </div>
                             </div>
                         </div>
-                        <div className="w-24 text-center text-3xl md:text-5xl font-black text-white tabular-nums tracking-tighter drop-shadow-md z-10 pl-2">
+                        <div className="w-24 text-center text-3xl md:text-5xl font-black text-white tabular-nums tracking-tighter drop-shadow-md z-10 pl-2 flex-shrink-0">
                             {match.scoreA}
                         </div>
                     </div>
@@ -816,10 +962,10 @@ export const TVOverlay: React.FC<TVOverlayProps> = ({
                                 {teamB.logoUrl ? <img src={teamB.logoUrl} className="w-full h-full object-contain" /> : <div className="text-red-900 font-bold text-lg md:text-xl flex items-center justify-center h-full">{teamB.name[0]}</div>}
                                 {match.servingTeamId === teamB.id && <div className="absolute -top-1 -right-1 text-lg bg-white rounded-full leading-none shadow-sm border border-slate-200">🏐</div>}
                             </div>
-                            <div className={`flex flex-col 
+                            <div className={`flex flex-col min-w-0
                                 ${isVertical ? '' : 'items-end'}
                             `}>
-                                <h2 className={`text-white font-black uppercase italic tracking-tighter text-sm md:text-xl leading-none 
+                                <h2 className={`text-white font-black uppercase italic tracking-tighter text-sm md:text-xl leading-none truncate max-w-[100px] md:max-w-[200px]
                                     ${isVertical ? '' : 'text-right'}
                                 `}>{teamB.name}</h2>
                                 <div className={`flex gap-1 mt-1 
@@ -831,7 +977,7 @@ export const TVOverlay: React.FC<TVOverlayProps> = ({
                                 </div>
                             </div>
                         </div>
-                        <div className={`w-24 text-center text-3xl md:text-5xl font-black text-white tabular-nums tracking-tighter drop-shadow-md z-10 
+                        <div className={`w-24 text-center text-3xl md:text-5xl font-black text-white tabular-nums tracking-tighter drop-shadow-md z-10 flex-shrink-0
                             ${isVertical ? 'pr-2' : 'pr-2'}
                         `}>
                             {match.scoreB}
@@ -841,6 +987,57 @@ export const TVOverlay: React.FC<TVOverlayProps> = ({
             </div>
           )
       )}
+
+      {/* --- CONTROLS OVERLAY --- */}
+      {showControls && isAdmin && onPoint && (
+          <div className="absolute inset-x-0 bottom-0 z-50 bg-black/80 backdrop-blur-xl border-t border-white/20 p-4 animate-in slide-in-from-bottom-10 max-h-[60vh] overflow-y-auto">
+              <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-xl font-black text-white uppercase italic">Controles de Partido</h3>
+                  <button onClick={() => setShowControls(false)} className="bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded font-bold uppercase text-xs">Cerrar</button>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Team A Controls */}
+                  <ScoreControl 
+                      role={currentUser?.role as any}
+                      linkedTeamId={currentUser?.linkedTeamId}
+                      onPoint={onPoint}
+                      onSubtractPoint={onSubtractPoint}
+                      onRequestTimeout={onRequestTimeout!}
+                      onRequestSub={onRequestSub!}
+                      onModifyRotation={onModifyRotation!}
+                      onSetServe={onSetServe!}
+                      teamId={teamA.id}
+                      teamName={teamA.name}
+                      players={match.rotationA}
+                      disabled={match.status === 'finished'}
+                      timeoutsUsed={match.timeoutsA}
+                      subsUsed={match.substitutionsA}
+                      isServing={match.servingTeamId === teamA.id}
+                  />
+
+                  {/* Team B Controls */}
+                  <ScoreControl 
+                      role={currentUser?.role as any}
+                      linkedTeamId={currentUser?.linkedTeamId}
+                      onPoint={onPoint}
+                      onSubtractPoint={onSubtractPoint}
+                      onRequestTimeout={onRequestTimeout!}
+                      onRequestSub={onRequestSub!}
+                      onModifyRotation={onModifyRotation!}
+                      onSetServe={onSetServe!}
+                      teamId={teamB.id}
+                      teamName={teamB.name}
+                      players={match.rotationB}
+                      disabled={match.status === 'finished'}
+                      timeoutsUsed={match.timeoutsB}
+                      subsUsed={match.substitutionsB}
+                      isServing={match.servingTeamId === teamB.id}
+                  />
+              </div>
+          </div>
+      )}
+
     </div>
   );
 };

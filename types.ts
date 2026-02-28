@@ -126,6 +126,7 @@ export interface LiveMatchState {
   showScoreboard?: boolean;// Sync TV state
   showRotation?: boolean;  // Sync TV state
   statsSetIndex?: number;  // If defined, show stats for this set index (0-based). If undefined, show match total.
+  adminPeerId?: string;    // PeerJS ID for live streaming
 }
 
 export interface RequestItem {
