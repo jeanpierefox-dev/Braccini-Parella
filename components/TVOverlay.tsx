@@ -71,7 +71,9 @@ export const TVOverlay: React.FC<TVOverlayProps> = ({
   const [showSettings, setShowSettings] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [showTikTokHelp, setShowTikTokHelp] = useState(false);
+  const [showMobileHelp, setShowMobileHelp] = useState(false);
   const [showOBSHelp, setShowOBSHelp] = useState(false);
+  const [showUI, setShowUI] = useState(true);
 
   // PeerJS Logic (Admin - Broadcaster)
   useEffect(() => {
@@ -362,12 +364,6 @@ export const TVOverlay: React.FC<TVOverlayProps> = ({
                 <>
                     <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-blue-900/40 via-corp-bg to-black"></div>
                     <div className="absolute top-0 left-0 w-full h-full opacity-20" style={{ backgroundImage: 'radial-gradient(#ffffff 1px, transparent 1px)', backgroundSize: '30px 30px' }}></div>
-                    
-                    {cameraError && (
-                        <div className="absolute top-20 right-6 flex items-center gap-2 bg-red-900/50 text-red-200 px-3 py-1 rounded-full border border-red-500/30 backdrop-blur-sm pointer-events-none">
-                            <span className="text-xs">📷 {cameraError} (Modo Gráfico)</span>
-                        </div>
-                    )}
                 </>
             )}
             {/* Viewer Mode: Transparent background for OBS/Overlay usage */}
@@ -392,7 +388,21 @@ export const TVOverlay: React.FC<TVOverlayProps> = ({
       </div>
 
 
+      {/* UI Toggle Button (Always visible but subtle) */}
+      {!isViewer && (
+        <div className="absolute top-4 right-4 z-[60]">
+            <button 
+                onClick={() => setShowUI(!showUI)}
+                className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${showUI ? 'bg-white/10 text-white/50 hover:bg-white/20 hover:text-white' : 'bg-red-600 text-white animate-pulse shadow-lg'}`}
+                title={showUI ? "Ocultar Interfaz (Modo Limpio)" : "Mostrar Interfaz"}
+            >
+                {showUI ? '👁️' : '👁️‍🗨️'}
+            </button>
+        </div>
+      )}
+
       {/* --- HEADER ELEMENTS (TOP LEFT) - NAV BAR --- */}
+      {showUI && (
       <div className="absolute top-4 left-4 md:top-6 md:left-6 landscape:top-3 landscape:left-4 landscape:scale-90 flex flex-col gap-3 z-50 items-start transition-all">
           
           {/* NAVIGATION BUTTONS */}
@@ -416,6 +426,15 @@ export const TVOverlay: React.FC<TVOverlayProps> = ({
                         🎮
                     </button>
                     
+                    {/* Mobile Help Toggle */}
+                    <button 
+                        onClick={() => setShowMobileHelp(!showMobileHelp)}
+                        className={`px-3 py-3 rounded-lg text-xs font-bold transition backdrop-blur-md border border-white/20 shadow-lg ${showMobileHelp ? 'bg-blue-600 text-white' : 'bg-black/60 hover:bg-white text-white hover:text-black'}`}
+                        title="Usar Celular como Cámara"
+                    >
+                        📱
+                    </button>
+
                     {/* OBS Help Toggle */}
                     <button 
                         onClick={() => setShowOBSHelp(!showOBSHelp)}
@@ -513,43 +532,76 @@ export const TVOverlay: React.FC<TVOverlayProps> = ({
               </div>
           )}
       </div>
-
-      {/* --- TOURNAMENT LOGO (TOP RIGHT) --- */}
+      )}
       {tournament?.logoUrl && (
           <div className={`absolute z-40 transition-all duration-500 pointer-events-none origin-top-right
               ${isVertical 
-                  ? 'top-16 right-4 scale-90' 
-                  : 'top-2 right-2 scale-75'
+                  ? 'top-16 right-4 scale-100' 
+                  : 'top-2 right-2 scale-100'
               }
           `}>
               <img 
                 src={tournament.logoUrl} 
                 alt="Torneo" 
-                className="h-16 w-16 md:h-24 md:w-24 object-contain drop-shadow-2xl opacity-90" 
+                className="h-24 w-24 md:h-32 md:w-32 object-contain drop-shadow-2xl opacity-100" 
               />
           </div>
       )}
 
       {/* TikTok & Facebook Live Buttons - Admin Only */}
-      {canUseTikTok && (
+      {canUseTikTok && showUI && (
         <div className="absolute top-36 right-6 landscape:top-24 landscape:right-4 portrait:bottom-24 portrait:right-4 portrait:top-auto flex flex-col items-center gap-4 opacity-100 z-20 transition-all">
-           {/* Viewer Link Button */}
+           {/* Scoreboard Toggle Button */}
            <button 
-             onClick={() => {
-                 navigator.clipboard.writeText(window.location.origin + '/?view=' + match.matchId);
-                 alert("Enlace de transmisión copiado al portapapeles: " + window.location.origin + '/?view=' + match.matchId);
-             }}
-             className="flex flex-col items-center gap-2 group hover:scale-105 transition"
-             title="Copiar Enlace de Transmisión"
+             onClick={() => setVisibleScoreboard(!visibleScoreboard)}
+             className={`flex flex-col items-center gap-2 group hover:scale-105 transition`}
+             title={visibleScoreboard ? "Ocultar Marcador" : "Mostrar Marcador"}
            >
-               <div className="w-12 h-12 bg-black/80 rounded-full flex items-center justify-center border-2 border-blue-500 group-hover:bg-blue-500 transition shadow-[0_0_15px_rgba(59,130,246,0.6)]">
-                   <span className="text-2xl">🔗</span>
+               <div className={`w-12 h-12 rounded-full flex items-center justify-center border-2 transition shadow-[0_0_15px_rgba(59,130,246,0.6)] ${visibleScoreboard ? 'bg-blue-600 border-blue-400' : 'bg-black/80 border-gray-500'}`}>
+                   <span className="text-2xl">🔢</span>
                </div>
-               <span className="text-[8px] font-bold text-white bg-black/50 px-1 rounded">Compartir</span>
+               <span className="text-[8px] font-bold text-white bg-black/50 px-1 rounded">{visibleScoreboard ? 'Ocultar' : 'Mostrar'}</span>
            </button>
-           
-           {/* Rotation View Toggle (REMOVED - Controlled by Admin Panel) */}
         </div>
+      )}
+
+      {/* --- MOBILE CAMERA HELP MODAL --- */}
+      {showMobileHelp && (
+          <div className="absolute inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-6 animate-in fade-in">
+              <div className="bg-slate-900 border border-white/20 rounded-2xl max-w-lg w-full p-6 shadow-2xl overflow-y-auto max-h-[90vh]">
+                  <div className="flex justify-between items-center mb-4 border-b border-white/10 pb-2">
+                      <h3 className="text-xl font-black text-white uppercase italic">Usar Cámara del Celular</h3>
+                      <button onClick={() => setShowMobileHelp(false)} className="text-slate-400 hover:text-white">✕</button>
+                  </div>
+                  <div className="space-y-4 text-sm text-slate-300">
+                      <p>Puedes usar la cámara de tu celular de dos formas:</p>
+                      
+                      <div className="bg-blue-900/20 p-3 rounded border border-blue-500/30">
+                          <h4 className="font-bold text-blue-200 mb-2">Opción 1: Directo en la App (Fácil)</h4>
+                          <ol className="list-decimal list-inside space-y-2 marker:text-blue-500">
+                              <li>Abre esta aplicación en el navegador de tu celular (Chrome/Safari).</li>
+                              <li>Inicia sesión como ADMIN.</li>
+                              <li>Entra al partido y activa la <strong>"Vista TV 📺"</strong>.</li>
+                              <li>Toca el icono 📷 y selecciona la <strong>cámara trasera</strong> (Environment).</li>
+                              <li>Gira tu celular en horizontal.</li>
+                              <li>¡Listo! El marcador aparecerá sobre tu video.</li>
+                          </ol>
+                      </div>
+
+                      <div className="bg-purple-900/20 p-3 rounded border border-purple-500/30">
+                          <h4 className="font-bold text-purple-200 mb-2">Opción 2: Con OBS Studio (Profesional)</h4>
+                          <p className="mb-2">Para enviar el video de tu celular a OBS en tu PC sin cables:</p>
+                          <ol className="list-decimal list-inside space-y-2 marker:text-purple-500">
+                              <li>Instala la app <strong>VDO.Ninja</strong> (o usa vdo.ninja en el navegador del celular).</li>
+                              <li>Selecciona "Add your Camera to OBS".</li>
+                              <li>Escanea el código QR o copia el enlace generado.</li>
+                              <li>En OBS (en tu PC), añade una fuente de <strong>"Navegador"</strong> y pega ese enlace.</li>
+                              <li>Coloca esa capa de video <em>debajo</em> de la captura de esta aplicación.</li>
+                          </ol>
+                      </div>
+                  </div>
+              </div>
+          </div>
       )}
 
       {/* --- OBS HELP MODAL --- */}
@@ -761,9 +813,9 @@ export const TVOverlay: React.FC<TVOverlayProps> = ({
 
       {/* --- COMPARATIVE STATS OVERLAY --- */}
       {visibleStats && !matchEnded && !match.showRotation && (
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-full max-w-2xl px-2 z-40 transition-transform scale-75 md:scale-90">
-            <div className="bg-slate-900/70 backdrop-blur-md border border-white/20 rounded-3xl overflow-hidden shadow-[0_0_50px_rgba(0,0,0,0.5)]">
-                 <div className="bg-gradient-to-b from-white/10 to-transparent p-4 flex justify-between items-end border-b border-white/10">
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-full max-w-3xl px-2 z-40 transition-transform scale-90 md:scale-100">
+            <div className="bg-black/90 backdrop-blur-xl border border-white/30 rounded-3xl overflow-hidden shadow-[0_0_80px_rgba(0,0,0,0.8)]">
+                 <div className="bg-gradient-to-b from-white/10 to-transparent p-6 flex justify-between items-end border-b border-white/20">
                     <div className="flex flex-col items-center w-1/4">
                          {teamA.logoUrl ? <img src={teamA.logoUrl} className="w-14 h-14 object-contain bg-white rounded-lg p-1" /> : <div className="w-14 h-14 bg-blue-900 rounded-lg flex items-center justify-center font-bold text-2xl">{teamA.name[0]}</div>}
                          <span className="text-white font-black uppercase text-xs mt-2 text-center">{teamA.name}</span>
@@ -874,66 +926,59 @@ export const TVOverlay: React.FC<TVOverlayProps> = ({
       ) : (
           /* --- SCOREBOARD (RESPONSIVE VERTICAL/HORIZONTAL) --- */
           visibleScoreboard && !isPreMatch && !match.showRotation && (
-            <div className={`relative z-10 w-full mx-auto px-2 md:px-4 absolute 
+            <div className={`relative z-10 w-full mx-auto px-2 md:px-4 absolute transition-all duration-300
                 ${isVertical 
-                    ? 'top-32 max-w-sm' 
-                    : 'top-20 md:bottom-6 md:top-auto max-w-6xl'
+                    ? 'top-32 max-w-sm scale-75 origin-top' 
+                    : 'bottom-32 md:bottom-24 max-w-4xl scale-75 origin-bottom'
                 }
             `}>
-                <div className={`flex items-stretch shadow-[0_10px_30px_rgba(0,0,0,0.5)] rounded-lg overflow-hidden border border-white/10 
+                <div className={`bg-black/80 backdrop-blur-md border border-white/20 rounded-2xl overflow-hidden shadow-2xl flex items-stretch
                     ${isVertical 
-                        ? 'flex-col h-auto' 
-                        : 'h-16 md:h-20 flex-row'
+                        ? 'flex-col w-full' 
+                        : 'flex-row h-20 md:h-24'
                     }
                 `}>
                     
                     {/* Team A Section */}
-                    <div className={`flex-1 bg-gradient-to-r from-blue-900 to-blue-800 flex items-center justify-between relative 
-                        ${isVertical 
-                            ? 'p-3 border-b border-white/10 flex-row' 
-                            : 'px-2 md:px-4 border-b-0 flex-row'
-                        }
+                    <div className={`flex-1 flex items-center relative
+                        ${isVertical ? 'p-2 border-b border-white/10 bg-gradient-to-b from-blue-900/40 to-transparent' : 'h-full px-4 bg-gradient-to-r from-blue-900/40 to-transparent'}
                     `}>
-                        {match.servingTeamId === teamA.id && (
-                            <div className={`absolute inset-0 flex items-center justify-start opacity-20 pointer-events-none 
-                                ${isVertical ? 'pl-4' : 'pl-1'}
-                            `}>
-                                <span className="text-4xl">🏐</span>
-                            </div>
-                        )}
-                        <div className="flex items-center gap-2 md:gap-3 z-10">
-                            <div className="w-8 h-8 md:w-12 md:h-12 bg-white rounded p-1 shadow-md relative">
-                                {teamA.logoUrl ? <img src={teamA.logoUrl} className="w-full h-full object-contain" /> : <div className="text-blue-900 font-bold text-lg md:text-xl flex items-center justify-center h-full">{teamA.name[0]}</div>}
-                                {match.servingTeamId === teamA.id && <div className="absolute -top-1 -left-1 text-lg bg-white rounded-full leading-none shadow-sm border border-slate-200">🏐</div>}
-                            </div>
-                            <div className="flex flex-col min-w-0">
-                                <h2 className="text-white font-black uppercase italic tracking-tighter text-sm md:text-xl leading-none truncate max-w-[100px] md:max-w-[200px]">{teamA.name}</h2>
-                                <div className="flex gap-1 mt-1">
-                                    {sets.filter(s => s.scoreA > s.scoreB && Math.max(s.scoreA, s.scoreB) >= (match.currentSet === match.config.maxSets ? match.config.tieBreakPoints : match.config.pointsPerSet)).map((_,i) => (
-                                        <div key={i} className="w-2 h-2 md:w-3 md:h-3 bg-yellow-400 rounded-full border border-yellow-600"></div>
-                                    ))}
-                                </div>
+                        {/* Logo */}
+                        <div className="w-12 h-12 md:w-16 md:h-16 bg-white/10 rounded-lg p-1 md:p-2 border border-white/10 shadow-lg relative flex-shrink-0 flex items-center justify-center mr-3 md:mr-4">
+                            {teamA.logoUrl ? <img src={teamA.logoUrl} className="w-full h-full object-contain" /> : <div className="text-blue-400 font-bold text-xl md:text-2xl">{teamA.name[0]}</div>}
+                            {match.servingTeamId === teamA.id && <div className="absolute -top-2 -left-2 text-xl bg-white rounded-full leading-none shadow-sm border border-slate-200">🏐</div>}
+                        </div>
+                        
+                        {/* Name */}
+                        <div className="flex-1 min-w-0 flex flex-col justify-center mr-2 md:mr-4">
+                            <h2 className="text-white font-black uppercase italic tracking-tighter text-sm md:text-2xl leading-none truncate">{teamA.name}</h2>
+                            <div className="flex gap-1 mt-1.5">
+                                {sets.filter(s => s.scoreA > s.scoreB && Math.max(s.scoreA, s.scoreB) >= (match.currentSet === match.config.maxSets ? match.config.tieBreakPoints : match.config.pointsPerSet)).map((_,i) => (
+                                    <div key={i} className="w-2 h-2 md:w-3 md:h-3 bg-yellow-400 rounded-full border border-yellow-600 shadow-[0_0_5px_rgba(250,204,21,0.6)]"></div>
+                                ))}
                             </div>
                         </div>
-                        <div className="w-24 text-center text-3xl md:text-5xl font-black text-white tabular-nums tracking-tighter drop-shadow-md z-10 pl-2 flex-shrink-0">
-                            {match.scoreA}
+
+                        {/* Score */}
+                        <div className="w-20 md:w-28 h-14 md:h-16 flex items-center justify-center bg-black/40 rounded-xl border border-white/10 shadow-inner">
+                            <span className="text-4xl md:text-6xl font-black text-white tabular-nums tracking-tighter drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] leading-none">
+                                {match.scoreA}
+                            </span>
                         </div>
                     </div>
 
                     {/* Center Info */}
-                    <div className={`bg-black/90 flex flex-col items-center justify-center border-x border-white/10 z-10 relative 
-                        ${isVertical ? 'py-1 w-full' : 'w-12 md:w-24 py-0'}
+                    <div className={`flex flex-col items-center justify-center border-x border-white/10 z-10 relative flex-shrink-0 bg-black/50
+                        ${isVertical ? 'py-1 w-full' : 'w-20 md:w-32 h-full'}
                     `}>
-                        <div className="text-[9px] md:text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-0.5">Set {match.currentSet}</div>
-                        <div className={`text-[10px] md:text-xs font-bold text-white px-1 md:px-2 rounded ${isSetFinished ? 'bg-yellow-500 text-black' : 'bg-red-600 animate-pulse'}`}>
+                        <div className="text-[9px] md:text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-1">Set {match.currentSet}</div>
+                        <div className={`text-[10px] md:text-xs font-bold text-white px-2 py-0.5 rounded ${isSetFinished ? 'bg-yellow-500 text-black' : 'bg-red-600 animate-pulse'}`}>
                             {isSetFinished ? 'FIN' : 'LIVE'}
                         </div>
-                        
-                        {/* Set Summary (Small) */}
-                        <div className="flex gap-1 mt-1">
+                        <div className="flex gap-1 mt-2">
                             {sets.map((s, i) => (
                                 (s.scoreA > 0 || s.scoreB > 0) && i < match.currentSet - 1 && (
-                                    <div key={i} className="text-[8px] text-slate-400 font-mono">
+                                    <div key={i} className="text-[9px] text-slate-400 font-mono font-bold">
                                         {s.scoreA}-{s.scoreB}
                                     </div>
                                 )
@@ -942,45 +987,34 @@ export const TVOverlay: React.FC<TVOverlayProps> = ({
                     </div>
 
                     {/* Team B Section */}
-                    <div className={`flex-1 bg-gradient-to-l from-red-900 to-red-800 flex items-center justify-between relative 
-                        ${isVertical 
-                            ? 'p-3 flex-row border-t border-white/10' 
-                            : 'px-2 md:px-4 flex-row-reverse border-t-0'
-                        }
+                    <div className={`flex-1 flex items-center relative
+                        ${isVertical ? 'p-2 border-t border-white/10 bg-gradient-to-t from-red-900/40 to-transparent' : 'h-full px-4 flex-row-reverse bg-gradient-to-l from-red-900/40 to-transparent'}
                     `}>
-                         {match.servingTeamId === teamB.id && (
-                            <div className={`absolute inset-0 flex items-center justify-end opacity-20 pointer-events-none 
-                                ${isVertical ? 'pr-4' : 'pr-1'}
-                            `}>
-                                <span className="text-4xl">🏐</span>
-                            </div>
-                         )}
-                        <div className={`flex items-center gap-2 md:gap-3 z-10 
-                            ${isVertical ? '' : 'flex-row-reverse'}
+                         {/* Logo */}
+                        <div className={`w-12 h-12 md:w-16 md:h-16 bg-white/10 rounded-lg p-1 md:p-2 border border-white/10 shadow-lg relative flex-shrink-0 flex items-center justify-center 
+                            ${isVertical ? 'mr-3' : 'ml-3 md:ml-4'}
                         `}>
-                            <div className="w-8 h-8 md:w-12 md:h-12 bg-white rounded p-1 shadow-md relative">
-                                {teamB.logoUrl ? <img src={teamB.logoUrl} className="w-full h-full object-contain" /> : <div className="text-red-900 font-bold text-lg md:text-xl flex items-center justify-center h-full">{teamB.name[0]}</div>}
-                                {match.servingTeamId === teamB.id && <div className="absolute -top-1 -right-1 text-lg bg-white rounded-full leading-none shadow-sm border border-slate-200">🏐</div>}
-                            </div>
-                            <div className={`flex flex-col min-w-0
-                                ${isVertical ? '' : 'items-end'}
-                            `}>
-                                <h2 className={`text-white font-black uppercase italic tracking-tighter text-sm md:text-xl leading-none truncate max-w-[100px] md:max-w-[200px]
-                                    ${isVertical ? '' : 'text-right'}
-                                `}>{teamB.name}</h2>
-                                <div className={`flex gap-1 mt-1 
-                                    ${isVertical ? '' : 'justify-end'}
-                                `}>
-                                    {sets.filter(s => s.scoreB > s.scoreA && Math.max(s.scoreA, s.scoreB) >= (match.currentSet === match.config.maxSets ? match.config.tieBreakPoints : match.config.pointsPerSet)).map((_,i) => (
-                                        <div key={i} className="w-2 h-2 md:w-3 md:h-3 bg-yellow-400 rounded-full border border-yellow-600"></div>
-                                    ))}
-                                </div>
+                            {teamB.logoUrl ? <img src={teamB.logoUrl} className="w-full h-full object-contain" /> : <div className="text-red-400 font-bold text-xl md:text-2xl">{teamB.name[0]}</div>}
+                            {match.servingTeamId === teamB.id && <div className="absolute -top-2 -right-2 text-xl bg-white rounded-full leading-none shadow-sm border border-slate-200">🏐</div>}
+                        </div>
+                        
+                        {/* Name */}
+                        <div className={`flex-1 min-w-0 flex flex-col justify-center 
+                            ${isVertical ? 'mr-2' : 'ml-2 md:ml-4 items-end text-right'}
+                        `}>
+                            <h2 className="text-white font-black uppercase italic tracking-tighter text-sm md:text-2xl leading-none truncate">{teamB.name}</h2>
+                            <div className={`flex gap-1 mt-1.5 ${isVertical ? '' : 'justify-end'}`}>
+                                {sets.filter(s => s.scoreB > s.scoreA && Math.max(s.scoreA, s.scoreB) >= (match.currentSet === match.config.maxSets ? match.config.tieBreakPoints : match.config.pointsPerSet)).map((_,i) => (
+                                    <div key={i} className="w-2 h-2 md:w-3 md:h-3 bg-yellow-400 rounded-full border border-yellow-600 shadow-[0_0_5px_rgba(250,204,21,0.6)]"></div>
+                                ))}
                             </div>
                         </div>
-                        <div className={`w-24 text-center text-3xl md:text-5xl font-black text-white tabular-nums tracking-tighter drop-shadow-md z-10 flex-shrink-0
-                            ${isVertical ? 'pr-2' : 'pr-2'}
-                        `}>
-                            {match.scoreB}
+
+                        {/* Score */}
+                        <div className="w-20 md:w-28 h-14 md:h-16 flex items-center justify-center bg-black/40 rounded-xl border border-white/10 shadow-inner">
+                            <span className="text-4xl md:text-6xl font-black text-white tabular-nums tracking-tighter drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] leading-none">
+                                {match.scoreB}
+                            </span>
                         </div>
                     </div>
                 </div>
