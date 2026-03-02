@@ -834,15 +834,15 @@ export const TVOverlay: React.FC<TVOverlayProps> = ({
 
                  <div className="p-2 space-y-1">
                      {[
-                        { l: statsA.attacks, label: 'ATAQUES', r: statsB.attacks, c: 'text-white' },
-                        { l: statsA.blocks, label: 'BLOQUEOS', r: statsB.blocks, c: 'text-blue-400' },
-                        { l: statsA.aces, label: 'ACES', r: statsB.aces, c: 'text-green-400' },
-                        { l: statsA.errors, label: 'ERRORES', r: statsB.errors, c: 'text-red-400' }
+                        { l: statsA.attacks, label: 'ATAQUES', r: statsB.attacks, c: 'text-yellow-400', bg: 'bg-yellow-400/10' },
+                        { l: statsA.blocks, label: 'BLOQUEOS', r: statsB.blocks, c: 'text-blue-400', bg: 'bg-blue-400/10' },
+                        { l: statsA.aces, label: 'ACES', r: statsB.aces, c: 'text-green-400', bg: 'bg-green-400/10' },
+                        { l: statsA.errors, label: 'ERRORES', r: statsB.errors, c: 'text-red-500', bg: 'bg-red-500/10' }
                      ].map((row, idx) => (
-                        <div key={idx} className="flex items-center py-2 border-b border-white/5 bg-black/20">
-                           <div className={`w-1/3 text-center text-xl font-bold font-mono ${row.c}`}>{row.l}</div>
-                           <div className="w-1/3 text-center text-[10px] font-bold text-gray-400 uppercase tracking-widest">{row.label}</div>
-                           <div className={`w-1/3 text-center text-xl font-bold font-mono ${row.c}`}>{row.r}</div>
+                        <div key={idx} className={`flex items-center py-3 border-b border-white/5 ${row.bg} rounded-lg mb-1`}>
+                           <div className={`w-1/3 text-center text-2xl font-black font-mono ${row.c} drop-shadow-sm`}>{row.l}</div>
+                           <div className="w-1/3 text-center text-xs font-bold text-white uppercase tracking-widest opacity-80">{row.label}</div>
+                           <div className={`w-1/3 text-center text-2xl font-black font-mono ${row.c} drop-shadow-sm`}>{row.r}</div>
                         </div>
                      ))}
                  </div>
@@ -928,40 +928,50 @@ export const TVOverlay: React.FC<TVOverlayProps> = ({
           visibleScoreboard && !isPreMatch && !match.showRotation && (
             <div className={`relative z-10 w-full mx-auto px-2 md:px-4 absolute transition-all duration-300
                 ${isVertical 
-                    ? 'top-32 max-w-sm scale-75 origin-top' 
+                    ? 'top-4 left-2 w-auto max-w-[90%] scale-75 origin-top-left' 
                     : 'bottom-32 md:bottom-24 max-w-4xl scale-75 origin-bottom'
                 }
             `}>
                 <div className={`bg-black/80 backdrop-blur-md border border-white/20 rounded-2xl overflow-hidden shadow-2xl flex items-stretch
                     ${isVertical 
-                        ? 'flex-col w-full' 
+                        ? 'flex-row h-16' 
                         : 'flex-row h-20 md:h-24'
                     }
                 `}>
                     
                     {/* Team A Section */}
                     <div className={`flex-1 flex items-center relative
-                        ${isVertical ? 'p-2 border-b border-white/10 bg-gradient-to-b from-blue-900/40 to-transparent' : 'h-full px-4 bg-gradient-to-r from-blue-900/40 to-transparent'}
+                        ${isVertical ? 'px-2 bg-gradient-to-r from-blue-900/40 to-transparent' : 'h-full px-4 bg-gradient-to-r from-blue-900/40 to-transparent'}
                     `}>
                         {/* Logo */}
-                        <div className="w-12 h-12 md:w-16 md:h-16 bg-white/10 rounded-lg p-1 md:p-2 border border-white/10 shadow-lg relative flex-shrink-0 flex items-center justify-center mr-3 md:mr-4">
-                            {teamA.logoUrl ? <img src={teamA.logoUrl} className="w-full h-full object-contain" /> : <div className="text-blue-400 font-bold text-xl md:text-2xl">{teamA.name[0]}</div>}
-                            {match.servingTeamId === teamA.id && <div className="absolute -top-2 -left-2 text-xl bg-white rounded-full leading-none shadow-sm border border-slate-200">🏐</div>}
+                        <div className={`bg-white/10 rounded-lg border border-white/10 shadow-lg relative flex-shrink-0 flex items-center justify-center mr-2
+                            ${isVertical ? 'w-10 h-10 p-1' : 'w-12 h-12 md:w-16 md:h-16 p-1 md:p-2 mr-3 md:mr-4'}
+                        `}>
+                            {teamA.logoUrl ? <img src={teamA.logoUrl} className="w-full h-full object-contain" /> : <div className="text-blue-400 font-bold text-lg">{teamA.name[0]}</div>}
+                            {match.servingTeamId === teamA.id && <div className="absolute -top-1 -left-1 text-sm bg-white rounded-full leading-none shadow-sm border border-slate-200">🏐</div>}
                         </div>
                         
                         {/* Name */}
-                        <div className="flex-1 min-w-0 flex flex-col justify-center mr-2 md:mr-4">
-                            <h2 className="text-white font-black uppercase italic tracking-tighter text-sm md:text-2xl leading-none truncate">{teamA.name}</h2>
-                            <div className="flex gap-1 mt-1.5">
+                        <div className={`flex-1 min-w-0 flex flex-col justify-center 
+                            ${isVertical ? 'mr-2' : 'mr-2 md:mr-4'}
+                        `}>
+                            <h2 className={`text-white font-black uppercase italic tracking-tighter leading-none truncate
+                                ${isVertical ? 'text-xs' : 'text-sm md:text-2xl'}
+                            `}>{teamA.name}</h2>
+                            <div className="flex gap-1 mt-1">
                                 {sets.filter(s => s.scoreA > s.scoreB && Math.max(s.scoreA, s.scoreB) >= (match.currentSet === match.config.maxSets ? match.config.tieBreakPoints : match.config.pointsPerSet)).map((_,i) => (
-                                    <div key={i} className="w-2 h-2 md:w-3 md:h-3 bg-yellow-400 rounded-full border border-yellow-600 shadow-[0_0_5px_rgba(250,204,21,0.6)]"></div>
+                                    <div key={i} className="w-1.5 h-1.5 md:w-3 md:h-3 bg-yellow-400 rounded-full border border-yellow-600 shadow-[0_0_5px_rgba(250,204,21,0.6)]"></div>
                                 ))}
                             </div>
                         </div>
 
                         {/* Score */}
-                        <div className="w-20 md:w-28 h-14 md:h-16 flex items-center justify-center bg-black/40 rounded-xl border border-white/10 shadow-inner">
-                            <span className="text-4xl md:text-6xl font-black text-white tabular-nums tracking-tighter drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] leading-none">
+                        <div className={`flex items-center justify-center bg-black/40 rounded-xl border border-white/10 shadow-inner
+                            ${isVertical ? 'w-12 h-10' : 'w-20 md:w-28 h-14 md:h-16'}
+                        `}>
+                            <span className={`font-black text-white tabular-nums tracking-tighter drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] leading-none
+                                ${isVertical ? 'text-2xl' : 'text-4xl md:text-6xl'}
+                            `}>
                                 {match.scoreA}
                             </span>
                         </div>
@@ -969,50 +979,58 @@ export const TVOverlay: React.FC<TVOverlayProps> = ({
 
                     {/* Center Info */}
                     <div className={`flex flex-col items-center justify-center border-x border-white/10 z-10 relative flex-shrink-0 bg-black/50
-                        ${isVertical ? 'py-1 w-full' : 'w-20 md:w-32 h-full'}
+                        ${isVertical ? 'w-12 h-full' : 'w-20 md:w-32 h-full'}
                     `}>
-                        <div className="text-[9px] md:text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-1">Set {match.currentSet}</div>
-                        <div className={`text-[10px] md:text-xs font-bold text-white px-2 py-0.5 rounded ${isSetFinished ? 'bg-yellow-500 text-black' : 'bg-red-600 animate-pulse'}`}>
+                        <div className="text-[8px] md:text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-0.5">Set {match.currentSet}</div>
+                        <div className={`text-[8px] md:text-xs font-bold text-white px-1.5 py-0.5 rounded ${isSetFinished ? 'bg-yellow-500 text-black' : 'bg-red-600 animate-pulse'}`}>
                             {isSetFinished ? 'FIN' : 'LIVE'}
                         </div>
-                        <div className="flex gap-1 mt-2">
-                            {sets.map((s, i) => (
-                                (s.scoreA > 0 || s.scoreB > 0) && i < match.currentSet - 1 && (
-                                    <div key={i} className="text-[9px] text-slate-400 font-mono font-bold">
-                                        {s.scoreA}-{s.scoreB}
-                                    </div>
-                                )
-                            ))}
-                        </div>
+                        {!isVertical && (
+                            <div className="flex gap-1 mt-2">
+                                {sets.map((s, i) => (
+                                    (s.scoreA > 0 || s.scoreB > 0) && i < match.currentSet - 1 && (
+                                        <div key={i} className="text-[9px] text-slate-400 font-mono font-bold">
+                                            {s.scoreA}-{s.scoreB}
+                                        </div>
+                                    )
+                                ))}
+                            </div>
+                        )}
                     </div>
 
                     {/* Team B Section */}
                     <div className={`flex-1 flex items-center relative
-                        ${isVertical ? 'p-2 border-t border-white/10 bg-gradient-to-t from-red-900/40 to-transparent' : 'h-full px-4 flex-row-reverse bg-gradient-to-l from-red-900/40 to-transparent'}
+                        ${isVertical ? 'px-2 flex-row-reverse bg-gradient-to-l from-red-900/40 to-transparent' : 'h-full px-4 flex-row-reverse bg-gradient-to-l from-red-900/40 to-transparent'}
                     `}>
                          {/* Logo */}
-                        <div className={`w-12 h-12 md:w-16 md:h-16 bg-white/10 rounded-lg p-1 md:p-2 border border-white/10 shadow-lg relative flex-shrink-0 flex items-center justify-center 
-                            ${isVertical ? 'mr-3' : 'ml-3 md:ml-4'}
+                        <div className={`bg-white/10 rounded-lg border border-white/10 shadow-lg relative flex-shrink-0 flex items-center justify-center 
+                            ${isVertical ? 'w-10 h-10 p-1 ml-2' : 'w-12 h-12 md:w-16 md:h-16 p-1 md:p-2 ml-3 md:ml-4'}
                         `}>
-                            {teamB.logoUrl ? <img src={teamB.logoUrl} className="w-full h-full object-contain" /> : <div className="text-red-400 font-bold text-xl md:text-2xl">{teamB.name[0]}</div>}
-                            {match.servingTeamId === teamB.id && <div className="absolute -top-2 -right-2 text-xl bg-white rounded-full leading-none shadow-sm border border-slate-200">🏐</div>}
+                            {teamB.logoUrl ? <img src={teamB.logoUrl} className="w-full h-full object-contain" /> : <div className="text-red-400 font-bold text-lg">{teamB.name[0]}</div>}
+                            {match.servingTeamId === teamB.id && <div className="absolute -top-1 -right-1 text-sm bg-white rounded-full leading-none shadow-sm border border-slate-200">🏐</div>}
                         </div>
                         
                         {/* Name */}
                         <div className={`flex-1 min-w-0 flex flex-col justify-center 
-                            ${isVertical ? 'mr-2' : 'ml-2 md:ml-4 items-end text-right'}
+                            ${isVertical ? 'ml-2 items-end text-right' : 'ml-2 md:ml-4 items-end text-right'}
                         `}>
-                            <h2 className="text-white font-black uppercase italic tracking-tighter text-sm md:text-2xl leading-none truncate">{teamB.name}</h2>
-                            <div className={`flex gap-1 mt-1.5 ${isVertical ? '' : 'justify-end'}`}>
+                            <h2 className={`text-white font-black uppercase italic tracking-tighter leading-none truncate
+                                ${isVertical ? 'text-xs' : 'text-sm md:text-2xl'}
+                            `}>{teamB.name}</h2>
+                            <div className={`flex gap-1 mt-1 ${isVertical ? '' : 'justify-end'}`}>
                                 {sets.filter(s => s.scoreB > s.scoreA && Math.max(s.scoreA, s.scoreB) >= (match.currentSet === match.config.maxSets ? match.config.tieBreakPoints : match.config.pointsPerSet)).map((_,i) => (
-                                    <div key={i} className="w-2 h-2 md:w-3 md:h-3 bg-yellow-400 rounded-full border border-yellow-600 shadow-[0_0_5px_rgba(250,204,21,0.6)]"></div>
+                                    <div key={i} className="w-1.5 h-1.5 md:w-3 md:h-3 bg-yellow-400 rounded-full border border-yellow-600 shadow-[0_0_5px_rgba(250,204,21,0.6)]"></div>
                                 ))}
                             </div>
                         </div>
 
                         {/* Score */}
-                        <div className="w-20 md:w-28 h-14 md:h-16 flex items-center justify-center bg-black/40 rounded-xl border border-white/10 shadow-inner">
-                            <span className="text-4xl md:text-6xl font-black text-white tabular-nums tracking-tighter drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] leading-none">
+                        <div className={`flex items-center justify-center bg-black/40 rounded-xl border border-white/10 shadow-inner
+                            ${isVertical ? 'w-12 h-10' : 'w-20 md:w-28 h-14 md:h-16'}
+                        `}>
+                            <span className={`font-black text-white tabular-nums tracking-tighter drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] leading-none
+                                ${isVertical ? 'text-2xl' : 'text-4xl md:text-6xl'}
+                            `}>
                                 {match.scoreB}
                             </span>
                         </div>
