@@ -25,7 +25,7 @@ export const generateSmartFixture = async (
   startDate: string,
   endDate: string,
   matchDays: string[] = [],
-  config: { format: 'LEAGUE' | 'GROUPS', knockout: 'SEMIS' | 'FINAL' | 'NONE' } = { format: 'LEAGUE', knockout: 'SEMIS' }
+  config: { format: 'LEAGUE' | 'GROUPS' | 'KNOCKOUT_4', knockout: 'SEMIS' | 'FINAL' | 'NONE' } = { format: 'LEAGUE', knockout: 'SEMIS' }
 ): Promise<{ groups: any, fixtures: any[] }> => {
   
   try {
@@ -43,17 +43,23 @@ export const generateSmartFixture = async (
       The tournament runs from ${startDate} to ${endDate}.
       
       CONFIGURATION:
-      - Format: ${config.format === 'LEAGUE' ? 'SINGLE LEAGUE (Round Robin - Everyone plays everyone)' : 'GROUPS (Split into balanced groups)'}.
+      - Format: ${config.format === 'LEAGUE' ? 'SINGLE LEAGUE (Round Robin - Everyone plays everyone)' : config.format === 'GROUPS' ? 'GROUPS (Split into balanced groups)' : 'KNOCKOUT_4 (Direct Semifinals and Final)'}.
       - Knockout Phase: ${config.knockout}.
 
       IMPORTANT RULES:
-      1. ${config.format === 'LEAGUE' ? 'Put ALL teams in a single group called "Fase Regular".' : 'Divide teams into balanced groups (Group A, Group B) if more than 6 teams.'}
+      1. ${config.format === 'LEAGUE' ? 'Put ALL teams in a single group called "Fase Regular".' : config.format === 'GROUPS' ? 'Divide teams into balanced groups (Group A, Group B) if more than 6 teams.' : 'No group phase. Direct knockout.'}
       2. Generate a match schedule ensuring teams play according to the format.
       3. **CRITICAL**: Matches MUST ONLY be scheduled on the following days of the week: ${daysString}.
       4. Distribute matches evenly across the available dates.
 
       **KNOCKOUT PHASE INSTRUCTIONS:**
-      ${config.knockout === 'SEMIS' ? `
+      ${config.format === 'KNOCKOUT_4' ? `
+      - Schedule 2 Semifinal matches FIRST.
+      - Semifinal 1: Team 1 vs Team 4 (or random pair).
+      - Semifinal 2: Team 2 vs Team 3 (or random pair).
+      - Final: "PLACEHOLDER_FINAL_A" vs "PLACEHOLDER_FINAL_B" (Winners of SF).
+      - Set the 'group' property for Semifinals to "Semifinal" and Final to "Final".
+      ` : config.knockout === 'SEMIS' ? `
       - Schedule 2 Semifinal matches AFTER the regular phase.
       - Semifinal 1: "PLACEHOLDER_SF1_A" (1st Place) vs "PLACEHOLDER_SF1_B" (4th Place/2nd Group B).
       - Semifinal 2: "PLACEHOLDER_SF2_A" (2nd Place) vs "PLACEHOLDER_SF2_B" (3rd Place/2nd Group A).
@@ -183,7 +189,7 @@ export const generateBasicFixture = (
   startDate: string, 
   endDate: string, 
   matchDays: string[],
-  config: { format: 'LEAGUE' | 'GROUPS', knockout: 'SEMIS' | 'FINAL' | 'NONE' } = { format: 'LEAGUE', knockout: 'SEMIS' }
+  config: { format: 'LEAGUE' | 'GROUPS' | 'KNOCKOUT_4', knockout: 'SEMIS' | 'FINAL' | 'NONE' } = { format: 'LEAGUE', knockout: 'SEMIS' }
 ) => {
   const groups: Record<string, string[]> = {};
   const fixtures: any[] = [];
@@ -225,67 +231,99 @@ export const generateBasicFixture = (
   // If no matching dates found (e.g. range too short or no match), fallback to start date to ensure fixture isn't empty
   if (dates.length === 0) dates.push(startDate);
 
-  // 2. Generate Matches (Round Robin logic)
-  const generateGroupFixtures = (groupTeams: Team[], groupName: string) => {
-      let dateIndex = 0;
-      for (let i = 0; i < groupTeams.length; i++) {
-        for (let j = i + 1; j < groupTeams.length; j++) {
-          fixtures.push({
-            date: dates[dateIndex % dates.length],
-            teamAId: groupTeams[i].id,
-            teamBId: groupTeams[j].id,
-            group: groupName
-          });
-          dateIndex++;
-        }
-      }
-  };
+  // 2. Generate Matches
+  if (config.format === 'KNOCKOUT_4' && teams.length >= 4) {
+      // KNOCKOUT_4 LOGIC
+      groups["Eliminatoria"] = teams.map(t => t.id);
+      
+      // Semifinals
+      const semiDate = dates[0];
+      const finalDate = dates.length > 1 ? dates[dates.length - 1] : dates[0];
 
-  // Logic: Split into groups if too many teams for a single round robin AND format is GROUPS
-  if (config.format === 'GROUPS' && teams.length > 8) {
-      const half = Math.ceil(teams.length / 2);
-      const groupA = teams.slice(0, half);
-      const groupB = teams.slice(half);
-      
-      groups["Grupo A"] = groupA.map(t => t.id);
-      groups["Grupo B"] = groupB.map(t => t.id);
-      
-      generateGroupFixtures(groupA, "Grupo A");
-      generateGroupFixtures(groupB, "Grupo B");
+      fixtures.push({
+          date: semiDate,
+          teamAId: teams[0].id,
+          teamBId: teams[3].id,
+          group: 'Semifinal'
+      });
+      fixtures.push({
+          date: semiDate,
+          teamAId: teams[1].id,
+          teamBId: teams[2].id,
+          group: 'Semifinal'
+      });
+
+      // Final Placeholder
+      fixtures.push({
+          date: finalDate,
+          teamAId: 'PLACEHOLDER_FINAL_A',
+          teamBId: 'PLACEHOLDER_FINAL_B',
+          group: 'Final'
+      });
+
   } else {
-      groups["Fase Regular"] = teams.map(t => t.id);
-      generateGroupFixtures(teams, "Fase Regular");
-  }
+      // ROUND ROBIN / GROUPS LOGIC
+      const generateGroupFixtures = (groupTeams: Team[], groupName: string) => {
+          let dateIndex = 0;
+          for (let i = 0; i < groupTeams.length; i++) {
+            for (let j = i + 1; j < groupTeams.length; j++) {
+              fixtures.push({
+                date: dates[dateIndex % dates.length],
+                teamAId: groupTeams[i].id,
+                teamBId: groupTeams[j].id,
+                group: groupName
+              });
+              dateIndex++;
+            }
+          }
+      };
 
-  // 3. Add Knockout Phase Placeholders
-  const lastDate = dates[dates.length - 1] || endDate;
-  
-  if (config.knockout === 'SEMIS' && teams.length >= 4) {
-      fixtures.push({
-          date: lastDate,
-          teamAId: 'PLACEHOLDER_SF1_A',
-          teamBId: 'PLACEHOLDER_SF1_B',
-          group: 'Semifinal'
-      });
-      fixtures.push({
-          date: lastDate,
-          teamAId: 'PLACEHOLDER_SF2_A',
-          teamBId: 'PLACEHOLDER_SF2_B',
-          group: 'Semifinal'
-      });
-      fixtures.push({
-          date: lastDate,
-          teamAId: 'PLACEHOLDER_FINAL_A',
-          teamBId: 'PLACEHOLDER_FINAL_B',
-          group: 'Final'
-      });
-  } else if (config.knockout === 'FINAL' && teams.length >= 2) {
-      fixtures.push({
-          date: lastDate,
-          teamAId: 'PLACEHOLDER_FINAL_A',
-          teamBId: 'PLACEHOLDER_FINAL_B',
-          group: 'Final'
-      });
+      // Logic: Split into groups if too many teams for a single round robin AND format is GROUPS
+      if (config.format === 'GROUPS' && teams.length > 8) {
+          const half = Math.ceil(teams.length / 2);
+          const groupA = teams.slice(0, half);
+          const groupB = teams.slice(half);
+          
+          groups["Grupo A"] = groupA.map(t => t.id);
+          groups["Grupo B"] = groupB.map(t => t.id);
+          
+          generateGroupFixtures(groupA, "Grupo A");
+          generateGroupFixtures(groupB, "Grupo B");
+      } else {
+          groups["Fase Regular"] = teams.map(t => t.id);
+          generateGroupFixtures(teams, "Fase Regular");
+      }
+
+      // 3. Add Knockout Phase Placeholders (Only for League/Groups)
+      const lastDate = dates[dates.length - 1] || endDate;
+      
+      if (config.knockout === 'SEMIS' && teams.length >= 4) {
+          fixtures.push({
+              date: lastDate,
+              teamAId: 'PLACEHOLDER_SF1_A',
+              teamBId: 'PLACEHOLDER_SF1_B',
+              group: 'Semifinal'
+          });
+          fixtures.push({
+              date: lastDate,
+              teamAId: 'PLACEHOLDER_SF2_A',
+              teamBId: 'PLACEHOLDER_SF2_B',
+              group: 'Semifinal'
+          });
+          fixtures.push({
+              date: lastDate,
+              teamAId: 'PLACEHOLDER_FINAL_A',
+              teamBId: 'PLACEHOLDER_FINAL_B',
+              group: 'Final'
+          });
+      } else if (config.knockout === 'FINAL' && teams.length >= 2) {
+          fixtures.push({
+              date: lastDate,
+              teamAId: 'PLACEHOLDER_FINAL_A',
+              teamBId: 'PLACEHOLDER_FINAL_B',
+              group: 'Final'
+          });
+      }
   }
 
   return { groups, fixtures };

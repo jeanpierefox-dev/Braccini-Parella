@@ -101,7 +101,7 @@ export const App: React.FC = () => {
       endDate: new Date(Date.now() + 30*24*60*60*1000).toISOString().split('T')[0],
       logoUrl: '',
       matchDays: [] as string[],
-      format: 'LEAGUE' as 'LEAGUE' | 'GROUPS',
+      format: 'LEAGUE' as 'LEAGUE' | 'GROUPS' | 'KNOCKOUT_4',
       knockout: 'SEMIS' as 'SEMIS' | 'FINAL' | 'NONE'
   });
   const [selectedTeamIds, setSelectedTeamIds] = useState<string[]>([]);
@@ -291,6 +291,10 @@ export const App: React.FC = () => {
   const handleCreateTournament = async () => {
     if (!currentUser) return;
     if (selectedTeamIds.length < 2) { alert("Debes seleccionar al menos 2 equipos para el torneo."); return; }
+    if (newTourneyData.format === 'KNOCKOUT_4' && selectedTeamIds.length !== 4) {
+        alert("Para el formato 'Eliminatoria (4 Equipos)', debes seleccionar exactamente 4 equipos.");
+        return;
+    }
     
     if (!newTourneyData.name.trim()) { alert("Ingresa un nombre para el torneo"); return; }
 
@@ -1816,11 +1820,12 @@ export const App: React.FC = () => {
                               <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Formato</label>
                               <select 
                                 value={newTourneyData.format} 
-                                onChange={e => setNewTourneyData({...newTourneyData, format: e.target.value as 'LEAGUE' | 'GROUPS'})} 
+                                onChange={e => setNewTourneyData({...newTourneyData, format: e.target.value as 'LEAGUE' | 'GROUPS' | 'KNOCKOUT_4'})} 
                                 className="w-full p-3 bg-black/40 border border-white/10 text-white font-bold focus:border-vnl-accent outline-none"
                               >
                                   <option value="LEAGUE">Liga (Todos contra Todos)</option>
                                   <option value="GROUPS">Fase de Grupos</option>
+                                  <option value="KNOCKOUT_4">Eliminatoria (4 Equipos)</option>
                               </select>
                           </div>
                           <div>
