@@ -24,14 +24,15 @@ export const generateSmartFixture = async (
   teams: Team[],
   startDate: string,
   endDate: string,
-  matchDays: string[] = [] 
+  matchDays: string[] = [],
+  config: { format: 'LEAGUE' | 'GROUPS', knockout: 'SEMIS' | 'FINAL' | 'NONE' } = { format: 'LEAGUE', knockout: 'SEMIS' }
 ): Promise<{ groups: any, fixtures: any[] }> => {
   
   try {
     // Use Mock if no API key is present
     if (!ai || !apiKey) {
       console.warn("No API Key or AI client, returning mock fixture");
-      return generateBasicFixture(teams, startDate, endDate, matchDays);
+      return generateBasicFixture(teams, startDate, endDate, matchDays, config);
     }
 
     const teamNames = teams.map(t => ({ id: t.id, name: t.name }));
@@ -41,11 +42,29 @@ export const generateSmartFixture = async (
       Create a volleyball tournament fixture for these teams: ${JSON.stringify(teamNames)}.
       The tournament runs from ${startDate} to ${endDate}.
       
+      CONFIGURATION:
+      - Format: ${config.format === 'LEAGUE' ? 'SINGLE LEAGUE (Round Robin - Everyone plays everyone)' : 'GROUPS (Split into balanced groups)'}.
+      - Knockout Phase: ${config.knockout}.
+
       IMPORTANT RULES:
-      1. Divide teams into balanced groups (Group A, Group B, etc.) if more than 5 teams.
-      2. Generate a match schedule (fixture) ensuring all teams in a group play each other once.
+      1. ${config.format === 'LEAGUE' ? 'Put ALL teams in a single group called "Fase Regular".' : 'Divide teams into balanced groups (Group A, Group B) if more than 6 teams.'}
+      2. Generate a match schedule ensuring teams play according to the format.
       3. **CRITICAL**: Matches MUST ONLY be scheduled on the following days of the week: ${daysString}.
-      4. Distribute matches evenly across the available dates within the range.
+      4. Distribute matches evenly across the available dates.
+
+      **KNOCKOUT PHASE INSTRUCTIONS:**
+      ${config.knockout === 'SEMIS' ? `
+      - Schedule 2 Semifinal matches AFTER the regular phase.
+      - Semifinal 1: "PLACEHOLDER_SF1_A" (1st Place) vs "PLACEHOLDER_SF1_B" (4th Place/2nd Group B).
+      - Semifinal 2: "PLACEHOLDER_SF2_A" (2nd Place) vs "PLACEHOLDER_SF2_B" (3rd Place/2nd Group A).
+      - Final: "PLACEHOLDER_FINAL_A" vs "PLACEHOLDER_FINAL_B" (Winners of SF).
+      ` : config.knockout === 'FINAL' ? `
+      - Schedule 1 Final match AFTER the regular phase.
+      - Final: "PLACEHOLDER_FINAL_A" (1st Place) vs "PLACEHOLDER_FINAL_B" (2nd Place).
+      ` : ''}
+      
+      Set the 'group' property for knockout matches to "Semifinal" or "Final".
+      
       5. Return JSON with 'groupsArray' (list of groups with name and teamIds) and 'fixtures'.
     `;
 
@@ -159,7 +178,13 @@ export const analyzeMatchStats = async (matchStats: any) => {
 }
 
 // Robust Fallback Generator (Exported for App.tsx usage)
-export const generateBasicFixture = (teams: Team[], startDate: string, endDate: string, matchDays: string[]) => {
+export const generateBasicFixture = (
+  teams: Team[], 
+  startDate: string, 
+  endDate: string, 
+  matchDays: string[],
+  config: { format: 'LEAGUE' | 'GROUPS', knockout: 'SEMIS' | 'FINAL' | 'NONE' } = { format: 'LEAGUE', knockout: 'SEMIS' }
+) => {
   const groups: Record<string, string[]> = {};
   const fixtures: any[] = [];
   
@@ -212,12 +237,12 @@ export const generateBasicFixture = (teams: Team[], startDate: string, endDate: 
             group: groupName
           });
           dateIndex++;
-        }
       }
+    }
   };
 
-  // Logic: Split into groups if too many teams for a single round robin
-  if (teams.length > 8) {
+  // Logic: Split into groups if too many teams for a single round robin AND format is GROUPS
+  if (config.format === 'GROUPS' && teams.length > 8) {
       const half = Math.ceil(teams.length / 2);
       const groupA = teams.slice(0, half);
       const groupB = teams.slice(half);
@@ -228,8 +253,39 @@ export const generateBasicFixture = (teams: Team[], startDate: string, endDate: 
       generateGroupFixtures(groupA, "Grupo A");
       generateGroupFixtures(groupB, "Grupo B");
   } else {
-      groups["Grupo Único"] = teams.map(t => t.id);
-      generateGroupFixtures(teams, "Grupo Único");
+      groups["Fase Regular"] = teams.map(t => t.id);
+      generateGroupFixtures(teams, "Fase Regular");
+  }
+
+  // 3. Add Knockout Phase Placeholders
+  const lastDate = dates[dates.length - 1] || endDate;
+  
+  if (config.knockout === 'SEMIS' && teams.length >= 4) {
+      fixtures.push({
+          date: lastDate,
+          teamAId: 'PLACEHOLDER_SF1_A',
+          teamBId: 'PLACEHOLDER_SF1_B',
+          group: 'Semifinal'
+      });
+      fixtures.push({
+          date: lastDate,
+          teamAId: 'PLACEHOLDER_SF2_A',
+          teamBId: 'PLACEHOLDER_SF2_B',
+          group: 'Semifinal'
+      });
+      fixtures.push({
+          date: lastDate,
+          teamAId: 'PLACEHOLDER_FINAL_A',
+          teamBId: 'PLACEHOLDER_FINAL_B',
+          group: 'Final'
+      });
+  } else if (config.knockout === 'FINAL' && teams.length >= 2) {
+      fixtures.push({
+          date: lastDate,
+          teamAId: 'PLACEHOLDER_FINAL_A',
+          teamBId: 'PLACEHOLDER_FINAL_B',
+          group: 'Final'
+      });
   }
 
   return { groups, fixtures };

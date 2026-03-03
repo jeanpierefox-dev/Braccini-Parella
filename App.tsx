@@ -100,7 +100,9 @@ export const App: React.FC = () => {
       startDate: new Date().toISOString().split('T')[0],
       endDate: new Date(Date.now() + 30*24*60*60*1000).toISOString().split('T')[0],
       logoUrl: '',
-      matchDays: [] as string[]
+      matchDays: [] as string[],
+      format: 'LEAGUE' as 'LEAGUE' | 'GROUPS',
+      knockout: 'SEMIS' as 'SEMIS' | 'FINAL' | 'NONE'
   });
   
   // Modals
@@ -299,7 +301,8 @@ export const App: React.FC = () => {
             registeredTeams, 
             newTourneyData.startDate, 
             newTourneyData.endDate,
-            newTourneyData.matchDays
+            newTourneyData.matchDays,
+            { format: newTourneyData.format, knockout: newTourneyData.knockout }
         );
     } catch (e) {
         console.error("Smart Fixture Generation Failed, forcing basic fallback", e);
@@ -307,7 +310,8 @@ export const App: React.FC = () => {
             registeredTeams, 
             newTourneyData.startDate, 
             newTourneyData.endDate,
-            newTourneyData.matchDays
+            newTourneyData.matchDays,
+            { format: newTourneyData.format, knockout: newTourneyData.knockout }
         );
         alert("Aviso: Se generó un fixture básico debido a un problema de conexión con la IA.");
     } finally {
@@ -335,7 +339,9 @@ export const App: React.FC = () => {
             startDate: new Date().toISOString().split('T')[0],
             endDate: new Date(Date.now() + 30*24*60*60*1000).toISOString().split('T')[0],
             logoUrl: '',
-            matchDays: []
+            matchDays: [],
+            format: 'LEAGUE',
+            knockout: 'SEMIS'
         });
         setLoading(false);
     }
@@ -911,6 +917,26 @@ export const App: React.FC = () => {
       pushData('liveMatch', updated);
   };
 
+
+  // Helper to resolve team or placeholder
+  const resolveTeam = (teamId: string, teams: Team[]): Team | { name: string, logoUrl?: string, id: string } | undefined => {
+      const realTeam = teams.find(t => t.id === teamId);
+      if (realTeam) return realTeam;
+
+      // Placeholder Logic
+      if (teamId === 'PLACEHOLDER_SF1_A') return { name: '1º Grupo A', id: teamId, logoUrl: '' };
+      if (teamId === 'PLACEHOLDER_SF1_B') return { name: '2º Grupo B', id: teamId, logoUrl: '' };
+      if (teamId === 'PLACEHOLDER_SF2_A') return { name: '1º Grupo B', id: teamId, logoUrl: '' };
+      if (teamId === 'PLACEHOLDER_SF2_B') return { name: '2º Grupo A', id: teamId, logoUrl: '' };
+      if (teamId === 'PLACEHOLDER_FINAL_A') return { name: 'Ganador SF1', id: teamId, logoUrl: '' };
+      if (teamId === 'PLACEHOLDER_FINAL_B') return { name: 'Ganador SF2', id: teamId, logoUrl: '' };
+      
+      // Generic fallback for unknown placeholders
+      if (teamId.startsWith('PLACEHOLDER')) return { name: 'TBD', id: teamId, logoUrl: '' };
+
+      return undefined;
+  };
+
   // --- RENDER HELPERS ---
 
   if (!currentUser) {
@@ -1123,12 +1149,13 @@ export const App: React.FC = () => {
                {/* Fixture / Matches List */}
                <div className="grid gap-4">
                    {activeTournament.fixtures?.map((fix) => {
-                       const teamA = activeTournament.teams.find(t => t.id === fix.teamAId);
-                       const teamB = activeTournament.teams.find(t => t.id === fix.teamBId);
+                       const teamA = resolveTeam(fix.teamAId, activeTournament.teams);
+                       const teamB = resolveTeam(fix.teamBId, activeTournament.teams);
                        if (!teamA || !teamB) return null;
 
                        const isLive = fix.status === 'live';
                        const isFinished = fix.status === 'finished';
+                       const isPlaceholder = fix.teamAId.startsWith('PLACEHOLDER') || fix.teamBId.startsWith('PLACEHOLDER');
 
                        return (
                            <div key={fix.id} className={`bg-corp-panel border ${isLive ? 'border-red-500/50 shadow-[0_0_20px_rgba(239,68,68,0.2)]' : 'border-white/10'} rounded-lg p-4 flex flex-col md:flex-row items-center justify-between gap-4 group transition hover:bg-white/5`}>
@@ -1172,8 +1199,13 @@ export const App: React.FC = () => {
                                                  Reiniciar
                                               </button>
                                          ) : (
-                                              <button onClick={() => handleInitiateMatch(fix.id, 'control')} className="bg-vnl-accent hover:bg-cyan-400 text-black px-4 py-2 rounded text-xs font-black uppercase tracking-widest shadow transition">
-                                                  Iniciar
+                                              <button 
+                                                onClick={() => handleInitiateMatch(fix.id, 'control')} 
+                                                disabled={isPlaceholder}
+                                                className={`px-4 py-2 rounded text-xs font-black uppercase tracking-widest shadow transition ${isPlaceholder ? 'bg-slate-700 text-slate-500 cursor-not-allowed' : 'bg-vnl-accent hover:bg-cyan-400 text-black'}`}
+                                                title={isPlaceholder ? "Esperando clasificación de equipos" : "Iniciar Partido"}
+                                              >
+                                                  {isPlaceholder ? 'Por Definir' : 'Iniciar'}
                                               </button>
                                          )}
                                        </>
@@ -1536,6 +1568,31 @@ export const App: React.FC = () => {
                           </div>
                       </div>
 
+                      <div className="grid grid-cols-2 gap-4">
+                          <div>
+                              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Formato</label>
+                              <select 
+                                value={newTourneyData.format} 
+                                onChange={e => setNewTourneyData({...newTourneyData, format: e.target.value as any})} 
+                                className="w-full p-3 bg-black/40 border border-white/10 text-white font-bold focus:border-vnl-accent outline-none"
+                              >
+                                  <option value="LEAGUE">Liga (Todos contra Todos)</option>
+                                  <option value="GROUPS">Fase de Grupos</option>
+                              </select>
+                          </div>
+                          <div>
+                              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Fase Final</label>
+                              <select 
+                                value={newTourneyData.knockout} 
+                                onChange={e => setNewTourneyData({...newTourneyData, knockout: e.target.value as any})} 
+                                className="w-full p-3 bg-black/40 border border-white/10 text-white font-bold focus:border-vnl-accent outline-none"
+                              >
+                                  <option value="SEMIS">Semifinal + Final (Top 4)</option>
+                                  <option value="FINAL">Solo Final (Top 2)</option>
+                                  <option value="NONE">Sin Fase Final</option>
+                              </select>
+                          </div>
+                      </div>
                       <div className="grid grid-cols-2 gap-4">
                           <div>
                               <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Inicio</label>
