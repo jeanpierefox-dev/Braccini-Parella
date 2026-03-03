@@ -3,7 +3,7 @@ import { Layout } from './components/Layout';
 import { Court } from './components/Court';
 import { ScoreControl } from './components/ScoreControl';
 import { Login } from './components/Login';
-import { TVOverlay } from './components/TVOverlay';
+import TVOverlay from './components/TVOverlay';
 import { UserManagement } from './components/UserManagement';
 import { SetStatsModal } from './components/SetStatsModal';
 import { CloudConfig } from './components/CloudConfig';
