@@ -601,7 +601,7 @@ const TVOverlay: React.FC<TVOverlayProps> = ({
       {tournament?.logoUrl && (
           <div className={`absolute z-40 transition-all duration-500 pointer-events-none origin-top-right
               ${isVertical 
-                  ? 'bottom-36 right-4 scale-100 origin-bottom-right' 
+                  ? 'bottom-36 right-4 scale-100 origin-bottom-right rotate-90' 
                   : 'top-6 left-4 scale-100'
               }
           `}>
@@ -999,7 +999,7 @@ const TVOverlay: React.FC<TVOverlayProps> = ({
             `}>
                 <div className={`bg-black/80 backdrop-blur-md border border-white/20 rounded-xl md:rounded-2xl overflow-hidden shadow-2xl flex items-stretch pointer-events-auto
                     ${isVertical 
-                        ? 'rotate-90 origin-center w-[75vh] max-w-[600px] h-20 md:h-24' 
+                        ? 'rotate-90 origin-center w-[60vh] max-w-[500px] h-16 md:h-20' 
                         : 'w-full flex-row h-14 md:h-24'
                     }
                 `}>
@@ -1009,7 +1009,7 @@ const TVOverlay: React.FC<TVOverlayProps> = ({
                         <div className={`bg-white/5 px-2 md:px-4 flex items-center justify-center ${isVertical ? 'border-r border-white/10' : 'order-last border-l border-white/10'}`}>
                             <img 
                                 src={tournament.logoUrl} 
-                                className={`h-8 w-8 md:h-12 md:w-12 object-contain drop-shadow ${isVertical ? '-rotate-90' : ''}`} 
+                                className={`h-8 w-8 md:h-12 md:w-12 object-contain drop-shadow`} 
                             />
                         </div>
                     )}
