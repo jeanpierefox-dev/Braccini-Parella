@@ -137,12 +137,13 @@ const TVOverlay: React.FC<TVOverlayProps> = ({
 
   // Handle Transitions ("Stinger Effect")
   useEffect(() => {
-    // Scoreboard Toggle: NO Stinger, just instant/fade
+    // Scoreboard Toggle: Sync local state with prop
     if (showScoreboard !== visibleScoreboard) {
         setVisibleScoreboard(showScoreboard);
-        // No setIsTransitioning(true) here
     }
-    
+  }, [showScoreboard]); // Only run when prop changes
+
+  useEffect(() => {
     // Stats Toggle: User requested Sequence (Logo Appears -> Logo Disappears -> Stats Appear)
     if (showStatsOverlay !== visibleStats) {
         setIsTransitioning(true); // 1. Logo In
@@ -159,7 +160,9 @@ const TVOverlay: React.FC<TVOverlayProps> = ({
 
         return () => { clearTimeout(hideLogoTimer); clearTimeout(showStatsTimer); };
     }
-  }, [showScoreboard, showStatsOverlay, visibleScoreboard, visibleStats]);
+  }, [showStatsOverlay]); // Only run when prop changes
+
+  // ... (rest of the code)
 
   // Enumerate Devices on Mount (Admin Only)
   useEffect(() => {
@@ -344,6 +347,15 @@ const TVOverlay: React.FC<TVOverlayProps> = ({
   };
 
   const canUseTikTok = currentUser?.role === 'ADMIN';
+
+  // Function to toggle scoreboard safely
+  const toggleScoreboard = () => {
+      const newState = !visibleScoreboard;
+      setVisibleScoreboard(newState);
+      if (onUpdateMatch) {
+          onUpdateMatch({ showScoreboard: newState });
+      }
+  };
 
   return (
     <div className="fixed inset-0 z-[100] flex flex-col justify-end pb-0 font-sans bg-transparent overflow-hidden transition-all duration-300">
@@ -553,7 +565,7 @@ const TVOverlay: React.FC<TVOverlayProps> = ({
         <div className="absolute top-36 right-6 landscape:top-24 landscape:right-4 portrait:bottom-24 portrait:right-4 portrait:top-auto flex flex-col items-center gap-4 opacity-100 z-20 transition-all">
            {/* Scoreboard Toggle Button */}
            <button 
-             onClick={() => setVisibleScoreboard(!visibleScoreboard)}
+             onClick={toggleScoreboard}
              className={`flex flex-col items-center gap-2 group hover:scale-105 transition`}
              title={visibleScoreboard ? "Ocultar Marcador" : "Mostrar Marcador"}
            >
@@ -929,35 +941,35 @@ const TVOverlay: React.FC<TVOverlayProps> = ({
             <div className={`relative z-10 transition-all duration-300
                 ${isVertical 
                     ? 'fixed top-0 bottom-0 left-0 w-20 flex items-center justify-center pointer-events-none' 
-                    : 'absolute bottom-10 left-1/2 -translate-x-1/2 w-full max-w-5xl pointer-events-none'
+                    : 'absolute bottom-4 md:bottom-10 left-1/2 -translate-x-1/2 w-[95%] md:w-full max-w-5xl pointer-events-none'
                 }
             `}>
-                <div className={`bg-black/80 backdrop-blur-md border border-white/20 rounded-2xl overflow-hidden shadow-2xl flex items-stretch pointer-events-auto
+                <div className={`bg-black/80 backdrop-blur-md border border-white/20 rounded-xl md:rounded-2xl overflow-hidden shadow-2xl flex items-stretch pointer-events-auto
                     ${isVertical 
-                        ? 'rotate-90 origin-center w-[80vh] max-w-[600px]' 
-                        : 'w-full flex-row h-20 md:h-24'
+                        ? 'rotate-90 origin-center w-[70vh] max-w-[500px]' 
+                        : 'w-full flex-row h-16 md:h-24'
                     }
                 `}>
                     
                     {/* Tournament Logo (Integrated) */}
                     {tournament?.logoUrl && (
-                        <div className="bg-white/5 px-4 flex items-center justify-center border-r border-white/10">
-                            <img src={tournament.logoUrl} className="h-12 w-12 object-contain drop-shadow" />
+                        <div className="bg-white/5 px-2 md:px-4 flex items-center justify-center border-r border-white/10">
+                            <img src={tournament.logoUrl} className="h-8 w-8 md:h-12 md:w-12 object-contain drop-shadow" />
                         </div>
                     )}
 
                     {/* Team A Section */}
-                    <div className="flex-1 flex items-center relative h-full px-4 bg-gradient-to-r from-blue-900/40 to-transparent">
+                    <div className="flex-1 flex items-center relative h-full px-2 md:px-4 bg-gradient-to-r from-blue-900/40 to-transparent">
                         {/* Logo */}
-                        <div className="bg-white/10 rounded-lg border border-white/10 shadow-lg relative flex-shrink-0 flex items-center justify-center w-12 h-12 md:w-16 md:h-16 p-1 md:p-2 mr-3 md:mr-4">
-                            {teamA.logoUrl ? <img src={teamA.logoUrl} className="w-full h-full object-contain" /> : <div className="text-blue-400 font-bold text-lg">{teamA.name[0]}</div>}
-                            {match.servingTeamId === teamA.id && <div className="absolute -top-1 -left-1 text-sm bg-white rounded-full leading-none shadow-sm border border-slate-200">🏐</div>}
+                        <div className="bg-white/10 rounded-lg border border-white/10 shadow-lg relative flex-shrink-0 flex items-center justify-center w-10 h-10 md:w-16 md:h-16 p-1 md:p-2 mr-2 md:mr-4">
+                            {teamA.logoUrl ? <img src={teamA.logoUrl} className="w-full h-full object-contain" /> : <div className="text-blue-400 font-bold text-sm md:text-lg">{teamA.name[0]}</div>}
+                            {match.servingTeamId === teamA.id && <div className="absolute -top-1 -left-1 text-xs md:text-sm bg-white rounded-full leading-none shadow-sm border border-slate-200">🏐</div>}
                         </div>
                         
                         {/* Name */}
-                        <div className="flex-1 min-w-0 flex flex-col justify-center mr-2 md:mr-4">
-                            <h2 className="text-white font-black uppercase italic tracking-tighter leading-none truncate text-sm md:text-2xl">{teamA.name}</h2>
-                            <div className="flex gap-1 mt-1">
+                        <div className="flex-1 min-w-0 flex flex-col justify-center mr-1 md:mr-4">
+                            <h2 className="text-white font-black uppercase italic tracking-tighter leading-none truncate text-xs md:text-2xl">{teamA.name}</h2>
+                            <div className="flex gap-1 mt-0.5 md:mt-1">
                                 {sets.filter(s => s.scoreA > s.scoreB && Math.max(s.scoreA, s.scoreB) >= (match.currentSet === match.config.maxSets ? match.config.tieBreakPoints : match.config.pointsPerSet)).map((_,i) => (
                                     <div key={i} className="w-1.5 h-1.5 md:w-3 md:h-3 bg-yellow-400 rounded-full border border-yellow-600 shadow-[0_0_5px_rgba(250,204,21,0.6)]"></div>
                                 ))}
@@ -965,23 +977,23 @@ const TVOverlay: React.FC<TVOverlayProps> = ({
                         </div>
 
                         {/* Score */}
-                        <div className="flex items-center justify-center bg-black/40 rounded-xl border border-white/10 shadow-inner w-20 md:w-28 h-14 md:h-16">
-                            <span className="font-black text-white tabular-nums tracking-tighter drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] leading-none text-4xl md:text-6xl">
+                        <div className="flex items-center justify-center bg-black/40 rounded-lg md:rounded-xl border border-white/10 shadow-inner w-14 md:w-28 h-10 md:h-16">
+                            <span className="font-black text-white tabular-nums tracking-tighter drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] leading-none text-2xl md:text-6xl">
                                 {match.scoreA}
                             </span>
                         </div>
                     </div>
 
                     {/* Center Info */}
-                    <div className="flex flex-col items-center justify-center border-x border-white/10 z-10 relative flex-shrink-0 bg-black/50 w-20 md:w-32 h-full">
-                        <div className="text-[8px] md:text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-0.5">Set {match.currentSet}</div>
-                        <div className={`text-[8px] md:text-xs font-bold text-white px-1.5 py-0.5 rounded ${isSetFinished ? 'bg-yellow-500 text-black' : 'bg-red-600 animate-pulse'}`}>
+                    <div className="flex flex-col items-center justify-center border-x border-white/10 z-10 relative flex-shrink-0 bg-black/50 w-14 md:w-32 h-full">
+                        <div className="text-[7px] md:text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-0.5">Set {match.currentSet}</div>
+                        <div className={`text-[7px] md:text-xs font-bold text-white px-1 md:px-1.5 py-0.5 rounded ${isSetFinished ? 'bg-yellow-500 text-black' : 'bg-red-600 animate-pulse'}`}>
                             {isSetFinished ? 'FIN' : 'LIVE'}
                         </div>
-                        <div className="flex gap-1 mt-2">
+                        <div className="flex gap-0.5 md:gap-1 mt-1 md:mt-2">
                             {sets.map((s, i) => (
                                 (s.scoreA > 0 || s.scoreB > 0) && i < match.currentSet - 1 && (
-                                    <div key={i} className="text-[9px] text-slate-400 font-mono font-bold">
+                                    <div key={i} className="text-[7px] md:text-[9px] text-slate-400 font-mono font-bold">
                                         {s.scoreA}-{s.scoreB}
                                     </div>
                                 )
@@ -990,17 +1002,17 @@ const TVOverlay: React.FC<TVOverlayProps> = ({
                     </div>
 
                     {/* Team B Section */}
-                    <div className="flex-1 flex items-center relative h-full px-4 flex-row-reverse bg-gradient-to-l from-red-900/40 to-transparent">
+                    <div className="flex-1 flex items-center relative h-full px-2 md:px-4 flex-row-reverse bg-gradient-to-l from-red-900/40 to-transparent">
                          {/* Logo */}
-                        <div className="bg-white/10 rounded-lg border border-white/10 shadow-lg relative flex-shrink-0 flex items-center justify-center w-12 h-12 md:w-16 md:h-16 p-1 md:p-2 ml-3 md:ml-4">
-                            {teamB.logoUrl ? <img src={teamB.logoUrl} className="w-full h-full object-contain" /> : <div className="text-red-400 font-bold text-lg">{teamB.name[0]}</div>}
-                            {match.servingTeamId === teamB.id && <div className="absolute -top-1 -right-1 text-sm bg-white rounded-full leading-none shadow-sm border border-slate-200">🏐</div>}
+                        <div className="bg-white/10 rounded-lg border border-white/10 shadow-lg relative flex-shrink-0 flex items-center justify-center w-10 h-10 md:w-16 md:h-16 p-1 md:p-2 ml-2 md:ml-4">
+                            {teamB.logoUrl ? <img src={teamB.logoUrl} className="w-full h-full object-contain" /> : <div className="text-red-400 font-bold text-sm md:text-lg">{teamB.name[0]}</div>}
+                            {match.servingTeamId === teamB.id && <div className="absolute -top-1 -right-1 text-xs md:text-sm bg-white rounded-full leading-none shadow-sm border border-slate-200">🏐</div>}
                         </div>
                         
                         {/* Name */}
-                        <div className="flex-1 min-w-0 flex flex-col justify-center ml-2 md:ml-4 items-end text-right">
-                            <h2 className="text-white font-black uppercase italic tracking-tighter leading-none truncate text-sm md:text-2xl">{teamB.name}</h2>
-                            <div className="flex gap-1 mt-1 justify-end">
+                        <div className="flex-1 min-w-0 flex flex-col justify-center ml-1 md:ml-4 items-end text-right">
+                            <h2 className="text-white font-black uppercase italic tracking-tighter leading-none truncate text-xs md:text-2xl">{teamB.name}</h2>
+                            <div className="flex gap-1 mt-0.5 md:mt-1 justify-end">
                                 {sets.filter(s => s.scoreB > s.scoreA && Math.max(s.scoreA, s.scoreB) >= (match.currentSet === match.config.maxSets ? match.config.tieBreakPoints : match.config.pointsPerSet)).map((_,i) => (
                                     <div key={i} className="w-1.5 h-1.5 md:w-3 md:h-3 bg-yellow-400 rounded-full border border-yellow-600 shadow-[0_0_5px_rgba(250,204,21,0.6)]"></div>
                                 ))}
@@ -1008,8 +1020,8 @@ const TVOverlay: React.FC<TVOverlayProps> = ({
                         </div>
 
                         {/* Score */}
-                        <div className="flex items-center justify-center bg-black/40 rounded-xl border border-white/10 shadow-inner w-20 md:w-28 h-14 md:h-16">
-                            <span className="font-black text-white tabular-nums tracking-tighter drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] leading-none text-4xl md:text-6xl">
+                        <div className="flex items-center justify-center bg-black/40 rounded-lg md:rounded-xl border border-white/10 shadow-inner w-14 md:w-28 h-10 md:h-16">
+                            <span className="font-black text-white tabular-nums tracking-tighter drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] leading-none text-2xl md:text-6xl">
                                 {match.scoreB}
                             </span>
                         </div>
