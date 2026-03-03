@@ -135,6 +135,20 @@ const TVOverlay: React.FC<TVOverlayProps> = ({
   const [aspectRatio, setAspectRatio] = useState<'16:9' | '9:16'>('9:16');
   const isVertical = aspectRatio === '9:16';
 
+  // Auto-detect orientation
+  useEffect(() => {
+    const handleResize = () => {
+      setAspectRatio(window.innerWidth > window.innerHeight ? '16:9' : '9:16');
+    };
+    
+    // Add listener
+    window.addEventListener('resize', handleResize);
+    // Initial check
+    handleResize();
+    
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   // Handle Transitions ("Stinger Effect")
   useEffect(() => {
     // Scoreboard Toggle: Sync local state with prop
