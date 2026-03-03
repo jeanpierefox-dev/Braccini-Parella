@@ -55,8 +55,8 @@ export const generateSmartFixture = async (
       **KNOCKOUT PHASE INSTRUCTIONS:**
       ${config.format === 'KNOCKOUT_4' ? `
       - Schedule 2 Semifinal matches FIRST.
-      - Semifinal 1: Team 1 vs Team 4 (or random pair).
-      - Semifinal 2: Team 2 vs Team 3 (or random pair).
+      - Semifinal 1: Random Pair from the 4 teams.
+      - Semifinal 2: Random Pair of the remaining 2 teams.
       - Final: "PLACEHOLDER_FINAL_A" vs "PLACEHOLDER_FINAL_B" (Winners of SF).
       - Set the 'group' property for Semifinals to "Semifinal" and Final to "Final".
       ` : config.knockout === 'SEMIS' ? `
@@ -236,20 +236,23 @@ export const generateBasicFixture = (
       // KNOCKOUT_4 LOGIC
       groups["Eliminatoria"] = teams.map(t => t.id);
       
+      // Shuffle teams for random matchups
+      const shuffledTeams = [...teams].sort(() => Math.random() - 0.5);
+
       // Semifinals
       const semiDate = dates[0];
       const finalDate = dates.length > 1 ? dates[dates.length - 1] : dates[0];
 
       fixtures.push({
           date: semiDate,
-          teamAId: teams[0].id,
-          teamBId: teams[3].id,
+          teamAId: shuffledTeams[0].id,
+          teamBId: shuffledTeams[1].id,
           group: 'Semifinal'
       });
       fixtures.push({
           date: semiDate,
-          teamAId: teams[1].id,
-          teamBId: teams[2].id,
+          teamAId: shuffledTeams[2].id,
+          teamBId: shuffledTeams[3].id,
           group: 'Semifinal'
       });
 
