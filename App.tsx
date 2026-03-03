@@ -1093,7 +1093,7 @@ export const App: React.FC = () => {
             showStatsOverlay={liveMatch.showStats}
             showScoreboard={liveMatch.showScoreboard}
             isCloudConnected={isCloudConnected}
-            onUpdateMatch={(updates) => {
+            onUpdateMatch={(updates: Partial<LiveMatchState>) => {
                 if (!liveMatch) return;
                 const updatedMatch = { ...liveMatch, ...updates };
                 setLiveMatch(updatedMatch);
