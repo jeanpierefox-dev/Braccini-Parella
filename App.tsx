@@ -587,9 +587,14 @@ export const App: React.FC = () => {
       }
   };
 
-  const handleEndBroadcast = async () => {
+  const handleOpenMvpSelection = () => {
       if (!liveMatch || !activeTournament || !canControlMatch) return;
       if (!confirm("¿Confirmar y Guardar Resultado Final?")) return;
+      setShowMvpModal(true);
+  };
+
+  const handleConfirmMatchEnd = (mvpPlayerId: string | null) => {
+      if (!liveMatch || !activeTournament) return;
       
       const sets = liveMatch.sets || [];
       const winsA = sets.filter(s => s.scoreA > s.scoreB).length;
@@ -614,7 +619,9 @@ export const App: React.FC = () => {
               const yellowCards = playerActions.filter(h => h.type === 'yellow_card').length;
               const redCards = playerActions.filter(h => h.type === 'red_card').length;
               
-              if (points > 0 || playerActions.length > 0) {
+              const isMvp = player.id === mvpPlayerId;
+
+              if (points > 0 || playerActions.length > 0 || isMvp) {
                   return {
                       ...player,
                       stats: {
@@ -623,6 +630,7 @@ export const App: React.FC = () => {
                           points: player.stats.points + points,
                           aces: player.stats.aces + aces,
                           blocks: player.stats.blocks + blocks,
+                          mvps: player.stats.mvps + (isMvp ? 1 : 0),
                           yellowCards: (player.stats.yellowCards || 0) + yellowCards,
                           redCards: (player.stats.redCards || 0) + redCards
                       }
@@ -644,6 +652,7 @@ export const App: React.FC = () => {
 
       updateLiveMatch(null);
       setTvMode(false);
+      setShowMvpModal(false);
       setCurrentView('fixture');
   };
 
@@ -939,6 +948,7 @@ export const App: React.FC = () => {
 
   // Edit Tournament Modal State
   const [showEditTourneyModal, setShowEditTourneyModal] = useState(false);
+  const [showMvpModal, setShowMvpModal] = useState(false);
   const [editTourneyData, setEditTourneyData] = useState({
       id: '',
       name: '',
@@ -968,18 +978,19 @@ export const App: React.FC = () => {
   const handleUpdateTournament = async () => {
       if (!activeTournament || !editTourneyData.name) return;
       
-      const confirmMsg = "⚠️ ATENCIÓN: Si cambias el formato o las fechas, SE REGENERARÁ EL FIXTURE y se perderán los resultados actuales. ¿Deseas continuar?";
-      if (!window.confirm(confirmMsg)) return;
+      // Check if critical structure changed (Format or Knockout type)
+      const structureChanged = editTourneyData.format !== activeTournament.format || editTourneyData.knockout !== activeTournament.knockout;
+      
+      if (structureChanged) {
+          const confirmMsg = "⚠️ ATENCIÓN: Has cambiado el FORMATO del torneo. Esto REGENERARÁ EL FIXTURE y se perderán los resultados actuales. ¿Deseas continuar?";
+          if (!window.confirm(confirmMsg)) return;
+      }
 
       setLoading(true);
 
-      // Regenerate fixture logic
       let newFixtureData = { groups: activeTournament.groups, fixtures: activeTournament.fixtures };
       
-      // If critical config changed, regenerate
-      const configChanged = editTourneyData.format !== activeTournament.format || editTourneyData.knockout !== activeTournament.knockout || editTourneyData.startDate !== activeTournament.startDate || editTourneyData.endDate !== activeTournament.endDate;
-      
-      if (configChanged) {
+      if (structureChanged) {
           try {
             newFixtureData = await generateSmartFixture(
                 activeTournament.teams,
@@ -1008,12 +1019,13 @@ export const App: React.FC = () => {
           logoUrl: editTourneyData.logoUrl,
           format: editTourneyData.format,
           knockout: editTourneyData.knockout,
-          groups: newFixtureData.groups,
-          fixtures: newFixtureData.fixtures.map((f, i) => ({
+          // Only update groups/fixtures if structure changed, otherwise keep existing
+          groups: structureChanged ? newFixtureData.groups : activeTournament.groups,
+          fixtures: structureChanged ? newFixtureData.fixtures.map((f, i) => ({
               ...f,
               id: `${activeTournament.id}_fix_${Date.now()}_${i}`,
               status: 'scheduled'
-          }))
+          })) : activeTournament.fixtures
       };
 
       const updatedList = tournaments.map(t => t.id === updatedTournament.id ? updatedTournament : t);
@@ -1369,7 +1381,7 @@ export const App: React.FC = () => {
                                     {canBroadcast && (
                                         <button onClick={() => setTvMode(true)} className="bg-corp-accent hover:bg-corp-accent-hover text-white px-3 py-1.5 rounded text-xs font-bold uppercase tracking-widest shadow">Vista TV 📺</button>
                                     )}
-                                    <button onClick={handleEndBroadcast} className="bg-red-900/20 hover:bg-red-900/40 text-red-400 border border-red-500/20 px-3 py-1.5 rounded text-xs font-bold uppercase tracking-widest">Terminar</button>
+                                    <button onClick={handleOpenMvpSelection} className="bg-red-900/20 hover:bg-red-900/40 text-red-400 border border-red-500/20 px-3 py-1.5 rounded text-xs font-bold uppercase tracking-widest">Terminar</button>
                                  </>
                              )}
                              {currentUser.role === 'REFEREE' && (
@@ -1615,6 +1627,73 @@ export const App: React.FC = () => {
           />
       )}
       
+      {/* MVP Selection Modal */}
+      {showMvpModal && liveMatch && activeTournament && (
+          <div className="fixed inset-0 bg-black/95 z-[60] flex items-center justify-center p-4 backdrop-blur-md">
+              <div className="bg-vnl-panel border border-white/20 p-6 w-full max-w-4xl shadow-[0_0_50px_rgba(255,215,0,0.2)] max-h-[90vh] overflow-y-auto">
+                  <h3 className="text-3xl font-black text-yellow-400 uppercase italic tracking-tighter mb-2 text-center">🌟 Elegir MVP del Partido 🌟</h3>
+                  <p className="text-center text-slate-400 text-sm mb-8 uppercase tracking-widest">Selecciona al jugador más valioso para finalizar el encuentro</p>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                      {/* Team A */}
+                      <div>
+                          <h4 className="text-xl font-bold text-white uppercase border-b border-white/10 pb-2 mb-4 text-center">
+                              {activeTournament.teams.find(t => t.id === activeTournament.fixtures?.find(f => f.id === liveMatch.matchId)?.teamAId)?.name}
+                          </h4>
+                          <div className="grid grid-cols-2 gap-2">
+                              {activeTournament.teams.find(t => t.id === activeTournament.fixtures?.find(f => f.id === liveMatch.matchId)?.teamAId)?.players.map(p => {
+                                   const matchPoints = liveMatch.sets.flatMap(s => s.history).filter(h => h.playerId === p.id && (h.type === 'attack' || h.type === 'block' || h.type === 'ace')).length;
+                                   return (
+                                      <button 
+                                          key={p.id}
+                                          onClick={() => handleConfirmMatchEnd(p.id)}
+                                          className="bg-white/5 hover:bg-yellow-500/20 hover:border-yellow-500/50 border border-white/10 p-3 rounded flex flex-col items-center gap-1 transition group"
+                                      >
+                                          <span className="text-2xl font-black text-slate-700 group-hover:text-yellow-400 transition">#{p.number}</span>
+                                          <span className="text-xs font-bold text-white uppercase truncate w-full text-center">{p.name}</span>
+                                          <span className="text-[10px] bg-white/10 px-2 py-0.5 rounded text-slate-300 group-hover:bg-yellow-500 group-hover:text-black transition">{matchPoints} Pts</span>
+                                      </button>
+                                   );
+                              })}
+                          </div>
+                      </div>
+
+                      {/* Team B */}
+                      <div>
+                          <h4 className="text-xl font-bold text-white uppercase border-b border-white/10 pb-2 mb-4 text-center">
+                              {activeTournament.teams.find(t => t.id === activeTournament.fixtures?.find(f => f.id === liveMatch.matchId)?.teamBId)?.name}
+                          </h4>
+                          <div className="grid grid-cols-2 gap-2">
+                              {activeTournament.teams.find(t => t.id === activeTournament.fixtures?.find(f => f.id === liveMatch.matchId)?.teamBId)?.players.map(p => {
+                                   const matchPoints = liveMatch.sets.flatMap(s => s.history).filter(h => h.playerId === p.id && (h.type === 'attack' || h.type === 'block' || h.type === 'ace')).length;
+                                   return (
+                                      <button 
+                                          key={p.id}
+                                          onClick={() => handleConfirmMatchEnd(p.id)}
+                                          className="bg-white/5 hover:bg-yellow-500/20 hover:border-yellow-500/50 border border-white/10 p-3 rounded flex flex-col items-center gap-1 transition group"
+                                      >
+                                          <span className="text-2xl font-black text-slate-700 group-hover:text-yellow-400 transition">#{p.number}</span>
+                                          <span className="text-xs font-bold text-white uppercase truncate w-full text-center">{p.name}</span>
+                                          <span className="text-[10px] bg-white/10 px-2 py-0.5 rounded text-slate-300 group-hover:bg-yellow-500 group-hover:text-black transition">{matchPoints} Pts</span>
+                                      </button>
+                                   );
+                              })}
+                          </div>
+                      </div>
+                  </div>
+
+                  <div className="mt-8 flex justify-center gap-8">
+                      <button onClick={() => handleConfirmMatchEnd(null)} className="text-slate-500 text-xs font-bold uppercase tracking-widest hover:text-white transition">
+                          Finalizar sin MVP
+                      </button>
+                      <button onClick={() => setShowMvpModal(false)} className="text-red-500 text-xs font-bold uppercase tracking-widest hover:text-red-400 transition">
+                          Cancelar
+                      </button>
+                  </div>
+              </div>
+          </div>
+      )}
+
       {/* Edit Tournament Modal */}
       {showEditTourneyModal && (
           <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4 backdrop-blur-md">
