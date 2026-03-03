@@ -104,6 +104,7 @@ export const App: React.FC = () => {
       format: 'LEAGUE' as 'LEAGUE' | 'GROUPS',
       knockout: 'SEMIS' as 'SEMIS' | 'FINAL' | 'NONE'
   });
+  const [selectedTeamIds, setSelectedTeamIds] = useState<string[]>([]);
   
   // Modals
   const [showSubModal, setShowSubModal] = useState<{teamId: string} | null>(null);
@@ -289,16 +290,19 @@ export const App: React.FC = () => {
 
   const handleCreateTournament = async () => {
     if (!currentUser) return;
-    if (registeredTeams.length < 2) { alert("Mínimo 2 equipos para crear un torneo."); return; }
+    if (selectedTeamIds.length < 2) { alert("Debes seleccionar al menos 2 equipos para el torneo."); return; }
     
     if (!newTourneyData.name.trim()) { alert("Ingresa un nombre para el torneo"); return; }
 
     setLoading(true);
     let fixtureData: { groups: any, fixtures: any[] } = { groups: {}, fixtures: [] };
+    
+    // Filter teams
+    const tournamentTeams = registeredTeams.filter(t => selectedTeamIds.includes(t.id));
 
     try {
         fixtureData = await generateSmartFixture(
-            registeredTeams, 
+            tournamentTeams, 
             newTourneyData.startDate, 
             newTourneyData.endDate,
             newTourneyData.matchDays,
@@ -307,9 +311,9 @@ export const App: React.FC = () => {
     } catch (e) {
         console.error("Smart Fixture Generation Failed, forcing basic fallback", e);
         fixtureData = generateBasicFixture(
-            registeredTeams, 
+            tournamentTeams, 
             newTourneyData.startDate, 
-            newTourneyData.endDate,
+            newTourneyData.endDate, 
             newTourneyData.matchDays,
             { format: newTourneyData.format, knockout: newTourneyData.knockout }
         );
@@ -324,7 +328,7 @@ export const App: React.FC = () => {
           logoUrl: newTourneyData.logoUrl,
           startDate: newTourneyData.startDate,
           endDate: newTourneyData.endDate,
-          teams: registeredTeams,
+          teams: tournamentTeams,
           groups,
           fixtures: fixtures.map((f: any, i: number) => ({ ...f, id: `fix-${i}-${Date.now()}`, status: 'scheduled' }))
         };
@@ -343,8 +347,16 @@ export const App: React.FC = () => {
             format: 'LEAGUE',
             knockout: 'SEMIS'
         });
+        setSelectedTeamIds([]);
         setLoading(false);
     }
+  };
+
+  const toggleTeamSelection = (teamId: string) => {
+      setSelectedTeamIds(prev => {
+          if (prev.includes(teamId)) return prev.filter(id => id !== teamId);
+          return [...prev, teamId];
+      });
   };
 
   const toggleDaySelection = (day: string) => {
@@ -1804,7 +1816,7 @@ export const App: React.FC = () => {
                               <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Formato</label>
                               <select 
                                 value={newTourneyData.format} 
-                                onChange={e => setNewTourneyData({...newTourneyData, format: e.target.value as any})} 
+                                onChange={e => setNewTourneyData({...newTourneyData, format: e.target.value as 'LEAGUE' | 'GROUPS'})} 
                                 className="w-full p-3 bg-black/40 border border-white/10 text-white font-bold focus:border-vnl-accent outline-none"
                               >
                                   <option value="LEAGUE">Liga (Todos contra Todos)</option>
@@ -1815,7 +1827,7 @@ export const App: React.FC = () => {
                               <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Fase Final</label>
                               <select 
                                 value={newTourneyData.knockout} 
-                                onChange={e => setNewTourneyData({...newTourneyData, knockout: e.target.value as any})} 
+                                onChange={e => setNewTourneyData({...newTourneyData, knockout: e.target.value as 'SEMIS' | 'FINAL' | 'NONE'})} 
                                 className="w-full p-3 bg-black/40 border border-white/10 text-white font-bold focus:border-vnl-accent outline-none"
                               >
                                   <option value="SEMIS">Semifinal + Final (Top 4)</option>
@@ -1847,6 +1859,24 @@ export const App: React.FC = () => {
                                   </button>
                               ))}
                           </div>
+                      </div>
+                      
+                      {/* TEAM SELECTION */}
+                      <div>
+                          <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Equipos Participantes ({selectedTeamIds.length})</label>
+                          <div className="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto p-2 bg-black/20 rounded border border-white/5">
+                              {registeredTeams.map(team => (
+                                  <button
+                                      key={team.id}
+                                      onClick={() => toggleTeamSelection(team.id)}
+                                      className={`flex items-center gap-2 p-2 rounded text-xs font-bold uppercase transition border ${selectedTeamIds.includes(team.id) ? 'bg-vnl-accent/20 text-vnl-accent border-vnl-accent' : 'bg-black/40 text-slate-500 border-white/10 hover:border-white/30'}`}
+                                  >
+                                      <div className={`w-3 h-3 rounded-full border ${selectedTeamIds.includes(team.id) ? 'bg-vnl-accent border-vnl-accent' : 'border-slate-500'}`}></div>
+                                      <span className="truncate">{team.name}</span>
+                                  </button>
+                              ))}
+                          </div>
+                          {registeredTeams.length === 0 && <p className="text-xs text-red-400 mt-1">No hay equipos registrados.</p>}
                       </div>
                       <button onClick={handleCreateTournament} disabled={loading} className="w-full bg-vnl-accent hover:bg-cyan-400 text-black font-black py-4 uppercase tracking-widest text-sm shadow-lg transition mt-4 flex items-center justify-center gap-2">
                           {loading ? 'Generando Fixture...' : 'Crear & Generar Fixture'}
