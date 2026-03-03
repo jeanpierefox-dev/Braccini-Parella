@@ -83,6 +83,8 @@ export interface Tournament {
   teams: Team[];
   groups: { [key: string]: string[] }; // Group Name -> Array of Team IDs
   fixtures: MatchFixture[];
+  format?: 'LEAGUE' | 'GROUPS';
+  knockout?: 'SEMIS' | 'FINAL' | 'NONE';
 }
 
 export interface MatchFixture {

@@ -138,7 +138,7 @@ export const generateSmartFixture = async (
 
             if (fixtures.length === 0) {
                 console.warn("AI returned empty fixtures, using fallback");
-                return generateBasicFixture(teams, startDate, endDate, matchDays);
+                return generateBasicFixture(teams, startDate, endDate, matchDays, config);
             }
 
             return { groups: groupsMap, fixtures };
@@ -159,7 +159,7 @@ export const generateSmartFixture = async (
   } catch (error) {
     console.error("Gemini Service Failed - Using Fallback Generator", error);
     // Fallback to mock generation if AI fails entirely
-    return generateBasicFixture(teams, startDate, endDate, matchDays);
+    return generateBasicFixture(teams, startDate, endDate, matchDays, config);
   }
 };
 
@@ -237,8 +237,8 @@ export const generateBasicFixture = (
             group: groupName
           });
           dateIndex++;
+        }
       }
-    }
   };
 
   // Logic: Split into groups if too many teams for a single round robin AND format is GROUPS

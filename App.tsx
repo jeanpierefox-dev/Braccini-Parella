@@ -937,6 +937,94 @@ export const App: React.FC = () => {
       return undefined;
   };
 
+  // Edit Tournament Modal State
+  const [showEditTourneyModal, setShowEditTourneyModal] = useState(false);
+  const [editTourneyData, setEditTourneyData] = useState({
+      id: '',
+      name: '',
+      startDate: '',
+      endDate: '',
+      logoUrl: '',
+      matchDays: [] as string[],
+      format: 'LEAGUE' as 'LEAGUE' | 'GROUPS',
+      knockout: 'SEMIS' as 'SEMIS' | 'FINAL' | 'NONE'
+  });
+
+  const handleOpenEditTournament = () => {
+      if (!activeTournament) return;
+      setEditTourneyData({
+          id: activeTournament.id,
+          name: activeTournament.name,
+          startDate: activeTournament.startDate,
+          endDate: activeTournament.endDate,
+          logoUrl: activeTournament.logoUrl || '',
+          matchDays: [], // We don't store matchDays in Tournament yet, so we reset or need to persist it if we want to edit. For now, reset.
+          format: activeTournament.format || 'LEAGUE',
+          knockout: activeTournament.knockout || 'SEMIS'
+      });
+      setShowEditTourneyModal(true);
+  };
+
+  const handleUpdateTournament = async () => {
+      if (!activeTournament || !editTourneyData.name) return;
+      
+      const confirmMsg = "⚠️ ATENCIÓN: Si cambias el formato o las fechas, SE REGENERARÁ EL FIXTURE y se perderán los resultados actuales. ¿Deseas continuar?";
+      if (!window.confirm(confirmMsg)) return;
+
+      setLoading(true);
+
+      // Regenerate fixture logic
+      let newFixtureData = { groups: activeTournament.groups, fixtures: activeTournament.fixtures };
+      
+      // If critical config changed, regenerate
+      const configChanged = editTourneyData.format !== activeTournament.format || editTourneyData.knockout !== activeTournament.knockout || editTourneyData.startDate !== activeTournament.startDate || editTourneyData.endDate !== activeTournament.endDate;
+      
+      if (configChanged) {
+          try {
+            newFixtureData = await generateSmartFixture(
+                activeTournament.teams,
+                editTourneyData.startDate,
+                editTourneyData.endDate,
+                editTourneyData.matchDays,
+                { format: editTourneyData.format, knockout: editTourneyData.knockout }
+            );
+          } catch (e) {
+             console.error("Failed to regenerate fixture", e);
+             newFixtureData = generateBasicFixture(
+                activeTournament.teams,
+                editTourneyData.startDate,
+                editTourneyData.endDate,
+                editTourneyData.matchDays,
+                { format: editTourneyData.format, knockout: editTourneyData.knockout }
+             );
+          }
+      }
+
+      const updatedTournament: Tournament = {
+          ...activeTournament,
+          name: editTourneyData.name,
+          startDate: editTourneyData.startDate,
+          endDate: editTourneyData.endDate,
+          logoUrl: editTourneyData.logoUrl,
+          format: editTourneyData.format,
+          knockout: editTourneyData.knockout,
+          groups: newFixtureData.groups,
+          fixtures: newFixtureData.fixtures.map((f, i) => ({
+              ...f,
+              id: `${activeTournament.id}_fix_${Date.now()}_${i}`,
+              status: 'scheduled'
+          }))
+      };
+
+      const updatedList = tournaments.map(t => t.id === updatedTournament.id ? updatedTournament : t);
+      setTournaments(updatedList);
+      setActiveTournamentId(updatedTournament.id); // Refresh active
+      pushData('tournaments', updatedList);
+      
+      setShowEditTourneyModal(false);
+      setLoading(false);
+  };
+
   // --- RENDER HELPERS ---
 
   if (!currentUser) {
@@ -1141,7 +1229,10 @@ export const App: React.FC = () => {
                        <button onClick={() => setCurrentView('standings')} className="bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded text-xs font-bold uppercase tracking-widest transition">Tabla</button>
                        <button onClick={() => setCurrentView('stats')} className="bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded text-xs font-bold uppercase tracking-widest transition">Estadísticas</button>
                        {isAdmin && (
-                           <button onClick={handleDeleteTournament} className="bg-red-900/30 hover:bg-red-900/50 text-red-400 border border-red-500/30 px-4 py-2 rounded text-xs font-bold uppercase tracking-widest transition">Eliminar</button>
+                           <>
+                               <button onClick={handleOpenEditTournament} className="bg-blue-900/30 hover:bg-blue-900/50 text-blue-400 border border-blue-500/30 px-4 py-2 rounded text-xs font-bold uppercase tracking-widest transition">Editar</button>
+                               <button onClick={handleDeleteTournament} className="bg-red-900/30 hover:bg-red-900/50 text-red-400 border border-red-500/30 px-4 py-2 rounded text-xs font-bold uppercase tracking-widest transition">Eliminar</button>
+                           </>
                        )}
                    </div>
                </div>
@@ -1524,6 +1615,67 @@ export const App: React.FC = () => {
           />
       )}
       
+      {/* Edit Tournament Modal */}
+      {showEditTourneyModal && (
+          <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4 backdrop-blur-md">
+              <div className="bg-vnl-panel border border-white/20 p-6 w-full max-w-lg shadow-[0_0_50px_rgba(6,182,212,0.2)]">
+                  <h3 className="text-xl font-black text-white uppercase italic tracking-tighter mb-6 border-b border-white/10 pb-2">Editar Torneo</h3>
+                  <div className="space-y-4">
+                      <div>
+                          <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Nombre</label>
+                          <input value={editTourneyData.name} onChange={e => setEditTourneyData({...editTourneyData, name: e.target.value})} className="w-full p-3 bg-black/40 border border-white/10 text-white font-bold focus:border-vnl-accent outline-none" />
+                      </div>
+                      
+                      <div className="grid grid-cols-2 gap-4">
+                          <div>
+                              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Formato</label>
+                              <select 
+                                value={editTourneyData.format} 
+                                onChange={e => setEditTourneyData({...editTourneyData, format: e.target.value as any})} 
+                                className="w-full p-3 bg-black/40 border border-white/10 text-white font-bold focus:border-vnl-accent outline-none"
+                              >
+                                  <option value="LEAGUE">Liga (Todos contra Todos)</option>
+                                  <option value="GROUPS">Fase de Grupos</option>
+                              </select>
+                          </div>
+                          <div>
+                              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Fase Final</label>
+                              <select 
+                                value={editTourneyData.knockout} 
+                                onChange={e => setEditTourneyData({...editTourneyData, knockout: e.target.value as any})} 
+                                className="w-full p-3 bg-black/40 border border-white/10 text-white font-bold focus:border-vnl-accent outline-none"
+                              >
+                                  <option value="SEMIS">Semifinal + Final (Top 4)</option>
+                                  <option value="FINAL">Solo Final (Top 2)</option>
+                                  <option value="NONE">Sin Fase Final</option>
+                              </select>
+                          </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                          <div>
+                              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Inicio</label>
+                              <input type="date" value={editTourneyData.startDate} onChange={e => setEditTourneyData({...editTourneyData, startDate: e.target.value})} className="w-full p-3 bg-black/40 border border-white/10 text-white font-bold focus:border-vnl-accent outline-none" />
+                          </div>
+                          <div>
+                              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Fin</label>
+                              <input type="date" value={editTourneyData.endDate} onChange={e => setEditTourneyData({...editTourneyData, endDate: e.target.value})} className="w-full p-3 bg-black/40 border border-white/10 text-white font-bold focus:border-vnl-accent outline-none" />
+                          </div>
+                      </div>
+                      
+                      <div className="bg-red-900/20 border border-red-500/30 p-3 rounded text-xs text-red-300 font-bold">
+                          ⚠️ Advertencia: Cambiar el formato o las fechas regenerará todo el fixture y borrará los resultados existentes.
+                      </div>
+
+                      <button onClick={handleUpdateTournament} disabled={loading} className="w-full bg-vnl-accent hover:bg-cyan-400 text-black font-black py-4 uppercase tracking-widest text-sm shadow-lg transition mt-4 flex items-center justify-center gap-2">
+                          {loading ? 'Actualizando...' : 'Guardar Cambios'}
+                      </button>
+                      <button onClick={() => setShowEditTourneyModal(false)} className="w-full text-slate-500 text-xs font-bold uppercase tracking-widest hover:text-white transition">Cancelar</button>
+                  </div>
+              </div>
+          </div>
+      )}
+
       {/* Create Tournament Modal */}
       {showCreateTourneyModal && (
           <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4 backdrop-blur-md">
