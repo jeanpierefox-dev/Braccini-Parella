@@ -755,120 +755,118 @@ const TVOverlay: React.FC<TVOverlayProps> = ({
               <div className="w-full max-w-3xl flex flex-col gap-4 scale-75 md:scale-90 origin-center pointer-events-auto">
                   <div className="flex justify-between items-center text-white px-4">
                        <h2 className="text-xl font-black uppercase italic tracking-widest drop-shadow-md">Rotación</h2>
-                       {/* Close button removed as it's controlled by Admin */}
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 h-full">
                       {/* Team A Court */}
-                      <div className="relative bg-black/20 border-2 border-white/80 shadow-2xl overflow-hidden aspect-square rounded-lg backdrop-blur-sm">
-                          {/* Court Lines */}
-                          <div className="absolute top-1/3 left-0 right-0 h-1 bg-white/80"></div> {/* Attack Line */}
-                          <div className="absolute inset-0 flex items-center justify-center opacity-30 pointer-events-none">
-                              {teamA.logoUrl ? <img src={teamA.logoUrl} className="w-48 h-48 object-contain" /> : <div className="text-9xl font-black text-white">{teamA.name[0]}</div>}
-                          </div>
-                          
-                          {/* Team Name Label */}
-                          <div className="absolute top-2 left-2 bg-blue-900/90 text-white px-3 py-1 rounded font-bold uppercase text-sm border border-white/20 shadow-lg z-10">
-                              {teamA.name}
-                          </div>
-
-                          {/* Players Grid (Geographic) */}
-                          {/* 
-                             Net is at the TOP for this view (or bottom depending on perspective). 
-                             Standard rotation positions:
-                             4 3 2  (Front Row)
-                             5 6 1  (Back Row)
-                          */}
-                          <div className="absolute inset-0 grid grid-rows-2 grid-cols-3 p-4 gap-4">
-                              {/* Front Row: 4, 3, 2 */}
-                              {[4, 3, 2].map((pos) => {
-                                  const player = match.rotationA[pos - 1];
-                                  return (
-                                      <div key={pos} className="flex flex-col items-center justify-center">
-                                          <div className="w-16 h-16 bg-blue-900 rounded-full border-2 border-white shadow-lg flex items-center justify-center relative group">
-                                              <span className="text-2xl font-black text-white">{player ? player.number : '-'}</span>
-                                              <div className="absolute -bottom-2 bg-black/80 text-white text-[10px] px-2 py-0.5 rounded-full uppercase font-bold whitespace-nowrap">
-                                                  {player ? player.name.split(' ')[0] : 'VACÍO'}
-                                              </div>
-                                              <div className="absolute top-0 right-0 w-5 h-5 bg-yellow-400 text-black text-[10px] font-bold rounded-full flex items-center justify-center border border-white">
-                                                  P{pos}
-                                              </div>
-                                          </div>
-                                      </div>
-                                  );
-                              })}
+                      <div className="relative bg-blue-600 border-4 border-blue-600 shadow-2xl overflow-hidden aspect-square rounded-xl">
+                          {/* Orange Court Area */}
+                          <div className="absolute inset-2 bg-orange-500 border-2 border-white">
+                              {/* Court Lines */}
+                              <div className="absolute top-1/3 left-0 right-0 h-1 bg-white/80"></div> {/* Attack Line */}
+                              <div className="absolute inset-0 flex items-center justify-center opacity-20 pointer-events-none">
+                                  {teamA.logoUrl ? <img src={teamA.logoUrl} className="w-48 h-48 object-contain grayscale" /> : <div className="text-9xl font-black text-white">{teamA.name[0]}</div>}
+                              </div>
                               
-                              {/* Back Row: 5, 6, 1 */}
-                              {[5, 6, 1].map((pos) => {
-                                  const player = match.rotationA[pos - 1];
-                                  return (
-                                      <div key={pos} className="flex flex-col items-center justify-center">
-                                          <div className="w-16 h-16 bg-blue-800 rounded-full border-2 border-white/50 shadow-lg flex items-center justify-center relative">
-                                              <span className="text-2xl font-black text-white">{player ? player.number : '-'}</span>
-                                              <div className="absolute -bottom-2 bg-black/80 text-white text-[10px] px-2 py-0.5 rounded-full uppercase font-bold whitespace-nowrap">
-                                                  {player ? player.name.split(' ')[0] : 'VACÍO'}
-                                              </div>
-                                              <div className="absolute top-0 right-0 w-5 h-5 bg-slate-600 text-white text-[10px] font-bold rounded-full flex items-center justify-center border border-white">
-                                                  P{pos}
+                              {/* Team Name Label */}
+                              <div className="absolute top-0 left-0 bg-blue-700 text-white px-3 py-1 rounded-br-lg font-bold uppercase text-sm shadow-lg z-10">
+                                  {teamA.name}
+                              </div>
+
+                              {/* Players Grid */}
+                              <div className="absolute inset-0 grid grid-rows-2 grid-cols-3 p-4 gap-4">
+                                  {/* Front Row: 4, 3, 2 */}
+                                  {[4, 3, 2].map((pos) => {
+                                      const player = match.rotationA[pos - 1];
+                                      return (
+                                          <div key={pos} className="flex flex-col items-center justify-center">
+                                              <div className="w-14 h-14 bg-red-600 rounded-full border-2 border-white shadow-lg flex items-center justify-center relative group">
+                                                  <span className="text-2xl font-black text-white">{player ? player.number : '-'}</span>
+                                                  <div className="absolute -bottom-3 bg-[#3f2e18] text-white text-[9px] px-2 py-0.5 rounded-md uppercase font-bold whitespace-nowrap border border-white/20 shadow-md">
+                                                      {player ? player.name.split(' ')[0] : 'VACÍO'}
+                                                  </div>
+                                                  <div className="absolute top-0 right-0 w-4 h-4 bg-yellow-400 text-black text-[8px] font-bold rounded-full flex items-center justify-center border border-white">
+                                                      {pos}
+                                                  </div>
                                               </div>
                                           </div>
-                                      </div>
-                                  );
-                              })}
+                                      );
+                                  })}
+                                  
+                                  {/* Back Row: 5, 6, 1 */}
+                                  {[5, 6, 1].map((pos) => {
+                                      const player = match.rotationA[pos - 1];
+                                      return (
+                                          <div key={pos} className="flex flex-col items-center justify-center">
+                                              <div className="w-14 h-14 bg-red-600 rounded-full border-2 border-white shadow-lg flex items-center justify-center relative">
+                                                  <span className="text-2xl font-black text-white">{player ? player.number : '-'}</span>
+                                                  <div className="absolute -bottom-3 bg-[#3f2e18] text-white text-[9px] px-2 py-0.5 rounded-md uppercase font-bold whitespace-nowrap border border-white/20 shadow-md">
+                                                      {player ? player.name.split(' ')[0] : 'VACÍO'}
+                                                  </div>
+                                                  <div className="absolute top-0 right-0 w-4 h-4 bg-slate-200 text-black text-[8px] font-bold rounded-full flex items-center justify-center border border-white">
+                                                      {pos}
+                                                  </div>
+                                              </div>
+                                          </div>
+                                      );
+                                  })}
+                              </div>
                           </div>
                       </div>
 
                       {/* Team B Court */}
-                      <div className="relative bg-black/20 border-2 border-white/80 shadow-2xl overflow-hidden aspect-square rounded-lg backdrop-blur-sm">
-                          {/* Court Lines */}
-                          <div className="absolute top-1/3 left-0 right-0 h-1 bg-white/80"></div> {/* Attack Line */}
-                          <div className="absolute inset-0 flex items-center justify-center opacity-30 pointer-events-none">
-                              {teamB.logoUrl ? <img src={teamB.logoUrl} className="w-48 h-48 object-contain" /> : <div className="text-9xl font-black text-white">{teamB.name[0]}</div>}
-                          </div>
+                      <div className="relative bg-blue-600 border-4 border-blue-600 shadow-2xl overflow-hidden aspect-square rounded-xl">
+                          {/* Orange Court Area */}
+                          <div className="absolute inset-2 bg-orange-500 border-2 border-white">
+                              {/* Court Lines */}
+                              <div className="absolute top-1/3 left-0 right-0 h-1 bg-white/80"></div> {/* Attack Line */}
+                              <div className="absolute inset-0 flex items-center justify-center opacity-20 pointer-events-none">
+                                  {teamB.logoUrl ? <img src={teamB.logoUrl} className="w-48 h-48 object-contain grayscale" /> : <div className="text-9xl font-black text-white">{teamB.name[0]}</div>}
+                              </div>
 
-                          {/* Team Name Label */}
-                          <div className="absolute top-2 left-2 bg-red-900/90 text-white px-3 py-1 rounded font-bold uppercase text-sm border border-white/20 shadow-lg z-10">
-                              {teamB.name}
-                          </div>
+                              {/* Team Name Label */}
+                              <div className="absolute top-0 left-0 bg-red-700 text-white px-3 py-1 rounded-br-lg font-bold uppercase text-sm shadow-lg z-10">
+                                  {teamB.name}
+                              </div>
 
-                          {/* Players Grid (Geographic) */}
-                          <div className="absolute inset-0 grid grid-rows-2 grid-cols-3 p-4 gap-4">
-                              {/* Front Row: 4, 3, 2 (Mapped from Team B perspective positions) */}
-                              {/* Note: Standard logic usually mirrors, but for simplicity we show same layout P4-P3-P2 top */}
-                              {[4, 3, 2].map((pos) => {
-                                  const player = match.rotationB[pos - 1];
-                                  return (
-                                      <div key={pos} className="flex flex-col items-center justify-center">
-                                          <div className="w-16 h-16 bg-red-900 rounded-full border-2 border-white shadow-lg flex items-center justify-center relative">
-                                              <span className="text-2xl font-black text-white">{player ? player.number : '-'}</span>
-                                              <div className="absolute -bottom-2 bg-black/80 text-white text-[10px] px-2 py-0.5 rounded-full uppercase font-bold whitespace-nowrap">
-                                                  {player ? player.name.split(' ')[0] : 'VACÍO'}
-                                              </div>
-                                              <div className="absolute top-0 right-0 w-5 h-5 bg-yellow-400 text-black text-[10px] font-bold rounded-full flex items-center justify-center border border-white">
-                                                  P{pos}
+                              {/* Players Grid */}
+                              <div className="absolute inset-0 grid grid-rows-2 grid-cols-3 p-4 gap-4">
+                                  {/* Front Row: 4, 3, 2 */}
+                                  {[4, 3, 2].map((pos) => {
+                                      const player = match.rotationB[pos - 1];
+                                      return (
+                                          <div key={pos} className="flex flex-col items-center justify-center">
+                                              <div className="w-14 h-14 bg-red-600 rounded-full border-2 border-white shadow-lg flex items-center justify-center relative">
+                                                  <span className="text-2xl font-black text-white">{player ? player.number : '-'}</span>
+                                                  <div className="absolute -bottom-3 bg-[#3f2e18] text-white text-[9px] px-2 py-0.5 rounded-md uppercase font-bold whitespace-nowrap border border-white/20 shadow-md">
+                                                      {player ? player.name.split(' ')[0] : 'VACÍO'}
+                                                  </div>
+                                                  <div className="absolute top-0 right-0 w-4 h-4 bg-yellow-400 text-black text-[8px] font-bold rounded-full flex items-center justify-center border border-white">
+                                                      {pos}
+                                                  </div>
                                               </div>
                                           </div>
-                                      </div>
-                                  );
-                              })}
-                              
-                              {/* Back Row: 5, 6, 1 */}
-                              {[5, 6, 1].map((pos) => {
-                                  const player = match.rotationB[pos - 1];
-                                  return (
-                                      <div key={pos} className="flex flex-col items-center justify-center">
-                                          <div className="w-16 h-16 bg-red-800 rounded-full border-2 border-white/50 shadow-lg flex items-center justify-center relative">
-                                              <span className="text-2xl font-black text-white">{player ? player.number : '-'}</span>
-                                              <div className="absolute -bottom-2 bg-black/80 text-white text-[10px] px-2 py-0.5 rounded-full uppercase font-bold whitespace-nowrap">
-                                                  {player ? player.name.split(' ')[0] : 'VACÍO'}
-                                              </div>
-                                              <div className="absolute top-0 right-0 w-5 h-5 bg-slate-600 text-white text-[10px] font-bold rounded-full flex items-center justify-center border border-white">
-                                                  P{pos}
+                                      );
+                                  })}
+                                  
+                                  {/* Back Row: 5, 6, 1 */}
+                                  {[5, 6, 1].map((pos) => {
+                                      const player = match.rotationB[pos - 1];
+                                      return (
+                                          <div key={pos} className="flex flex-col items-center justify-center">
+                                              <div className="w-14 h-14 bg-red-600 rounded-full border-2 border-white shadow-lg flex items-center justify-center relative">
+                                                  <span className="text-2xl font-black text-white">{player ? player.number : '-'}</span>
+                                                  <div className="absolute -bottom-3 bg-[#3f2e18] text-white text-[9px] px-2 py-0.5 rounded-md uppercase font-bold whitespace-nowrap border border-white/20 shadow-md">
+                                                      {player ? player.name.split(' ')[0] : 'VACÍO'}
+                                                  </div>
+                                                  <div className="absolute top-0 right-0 w-4 h-4 bg-slate-200 text-black text-[8px] font-bold rounded-full flex items-center justify-center border border-white">
+                                                      {pos}
+                                                  </div>
                                               </div>
                                           </div>
-                                      </div>
-                                  );
-                              })}
+                                      );
+                                  })}
+                              </div>
                           </div>
                       </div>
                   </div>
@@ -879,15 +877,15 @@ const TVOverlay: React.FC<TVOverlayProps> = ({
       {/* --- COMPARATIVE STATS OVERLAY --- */}
       {visibleStats && !matchEnded && !match.showRotation && (
         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-full max-w-3xl px-2 z-40 transition-transform scale-90 md:scale-100">
-            <div className="bg-slate-950 border border-white/30 rounded-3xl overflow-hidden shadow-[0_0_80px_rgba(0,0,0,0.8)]">
-                 <div className="bg-slate-900 p-6 flex justify-between items-end border-b border-white/20">
+            <div className="bg-[#0000FF] border-4 border-[#facc15] rounded-3xl overflow-hidden shadow-[0_0_30px_rgba(250,204,21,0.4)]">
+                 <div className="bg-[#dc2626] p-6 flex justify-between items-end border-b-4 border-[#facc15]">
                     <div className="flex flex-col items-center w-1/4">
                          {teamA.logoUrl ? <img src={teamA.logoUrl} className="w-14 h-14 object-contain bg-white rounded-lg p-1" /> : <div className="w-14 h-14 bg-blue-900 rounded-lg flex items-center justify-center font-bold text-2xl">{teamA.name[0]}</div>}
                          <span className="text-white font-black uppercase text-xs mt-2 text-center">{teamA.name}</span>
                     </div>
                     <div className="flex flex-col items-center mb-2">
-                         <span className="text-yellow-400 font-black italic text-3xl">VS</span>
-                         <span className="text-gray-300 text-[10px] uppercase font-bold tracking-[0.2em]">
+                         <span className="text-[#facc15] font-black italic text-3xl drop-shadow-[0_2px_0_rgba(220,38,38,0.8)]">VS</span>
+                         <span className="text-white text-[10px] uppercase font-bold tracking-[0.2em]">
                              {match.statsSetIndex !== undefined ? `ESTADÍSTICAS SET ${match.statsSetIndex + 1}` : 'ESTADÍSTICAS TOTALES'}
                          </span>
                     </div>
@@ -899,12 +897,12 @@ const TVOverlay: React.FC<TVOverlayProps> = ({
 
                  <div className="p-2 space-y-1">
                      {[
-                        { l: statsA.attacks, label: 'ATAQUES', r: statsB.attacks, c: 'text-yellow-400', bg: 'bg-slate-900 border-yellow-900/50' },
-                        { l: statsA.blocks, label: 'BLOQUEOS', r: statsB.blocks, c: 'text-blue-400', bg: 'bg-slate-900 border-blue-900/50' },
-                        { l: statsA.aces, label: 'ACES', r: statsB.aces, c: 'text-green-400', bg: 'bg-slate-900 border-green-900/50' },
-                        { l: statsA.errors, label: 'ERRORES', r: statsB.errors, c: 'text-red-500', bg: 'bg-slate-900 border-red-900/50' }
+                        { l: statsA.attacks, label: 'ATAQUES', r: statsB.attacks, c: 'text-[#facc15]', bg: 'bg-[#0000FF] border-[#facc15]/30' },
+                        { l: statsA.blocks, label: 'BLOQUEOS', r: statsB.blocks, c: 'text-white', bg: 'bg-[#0000FF] border-[#facc15]/30' },
+                        { l: statsA.aces, label: 'ACES', r: statsB.aces, c: 'text-white', bg: 'bg-[#0000FF] border-[#facc15]/30' },
+                        { l: statsA.errors, label: 'ERRORES', r: statsB.errors, c: 'text-red-200', bg: 'bg-[#0000FF] border-[#facc15]/30' }
                      ].map((row, idx) => (
-                        <div key={idx} className={`flex items-center py-3 border border-white/5 ${row.bg} rounded-lg mb-1`}>
+                        <div key={idx} className={`flex items-center py-3 border ${row.bg} rounded-lg mb-1`}>
                            <div className={`w-1/3 text-center text-2xl font-black font-mono ${row.c} drop-shadow-sm`}>{row.l}</div>
                            <div className="w-1/3 text-center text-xs font-bold text-white uppercase tracking-widest opacity-80">{row.label}</div>
                            <div className={`w-1/3 text-center text-2xl font-black font-mono ${row.c} drop-shadow-sm`}>{row.r}</div>
@@ -997,59 +995,59 @@ const TVOverlay: React.FC<TVOverlayProps> = ({
                     : 'absolute bottom-4 md:bottom-10 left-1/2 -translate-x-1/2 w-[98%] md:w-full max-w-5xl pointer-events-none'
                 }
             `}>
-                <div className={`bg-[#00152e] border border-white/20 rounded-xl md:rounded-2xl overflow-hidden shadow-2xl flex items-stretch pointer-events-auto shrink-0
+                <div className={`bg-white border-4 border-[#facc15] rounded-xl md:rounded-2xl overflow-hidden shadow-[0_0_30px_rgba(250,204,21,0.3)] flex items-stretch pointer-events-auto shrink-0
                     ${isVertical 
-                        ? 'rotate-90 origin-center w-[55vh] max-w-none h-16 md:h-20' 
+                        ? 'rotate-90 origin-center w-[50vh] max-w-none h-12 md:h-16' 
                         : 'w-full flex-row h-14 md:h-24'
                     }
                 `}>
                     
-                    {/* Tournament Logo (Vertical Only - Start) */}
-                    {isVertical && tournament?.logoUrl && (
-                        <div className="bg-white/5 px-2 md:px-4 flex items-center justify-center border-r border-white/10">
-                            <img 
-                                src={tournament.logoUrl} 
-                                className="h-10 w-10 md:h-14 md:w-14 object-contain drop-shadow -rotate-90" 
-                            />
-                        </div>
-                    )}
+                    {/* Tournament Logo (Vertical Only - Start) - REMOVED */}
+
 
                     {/* Team A Section */}
-                    <div className="flex-1 flex items-center relative h-full px-2 md:px-4">
+                    <div className="flex-1 flex items-center relative h-full px-2 md:px-4 bg-[#0000FF]">
                         {/* Logo */}
-                        <div className="bg-slate-800 rounded-lg border border-white/10 shadow-lg relative flex-shrink-0 flex items-center justify-center w-8 h-8 md:w-16 md:h-16 p-0.5 md:p-2 mr-1 md:mr-4">
+                        <div className="bg-white/20 rounded-lg border border-white/20 shadow-lg relative flex-shrink-0 flex items-center justify-center w-8 h-8 md:w-16 md:h-16 p-0.5 md:p-2 mr-1 md:mr-4">
                             {teamA.logoUrl ? <img src={teamA.logoUrl} className="w-full h-full object-contain" /> : <div className="text-blue-400 font-bold text-xs md:text-lg">{teamA.name[0]}</div>}
                             {match.servingTeamId === teamA.id && <div className="absolute -top-1 -left-1 text-[8px] md:text-sm bg-white rounded-full leading-none shadow-sm border border-slate-200">🏐</div>}
                         </div>
                         
                         {/* Name */}
                         <div className="flex-1 min-w-0 flex flex-col justify-center mr-1 md:mr-4">
-                            <h2 className="text-white font-black uppercase italic tracking-tighter leading-none truncate text-[10px] md:text-2xl">{teamA.name}</h2>
+                            <h2 className={`text-white font-black uppercase italic tracking-tighter leading-none truncate ${isVertical ? 'text-[8px] md:text-xl' : 'text-[10px] md:text-2xl'}`}>{teamA.name}</h2>
                             <div className="flex gap-0.5 md:gap-1 mt-0.5 md:mt-1">
                                 {sets.filter(s => s.scoreA > s.scoreB && Math.max(s.scoreA, s.scoreB) >= (match.currentSet === match.config.maxSets ? match.config.tieBreakPoints : match.config.pointsPerSet)).map((_,i) => (
-                                    <div key={i} className="w-1.5 h-1.5 md:w-3 md:h-3 bg-yellow-400 rounded-full border border-yellow-600 shadow-[0_0_5px_rgba(250,204,21,0.6)]"></div>
+                                    <div key={i} className="w-1.5 h-1.5 md:w-3 md:h-3 bg-[#facc15] rounded-full border border-yellow-600 shadow-[0_0_5px_rgba(250,204,21,0.6)]"></div>
                                 ))}
                             </div>
                         </div>
 
                         {/* Score */}
-                        <div className="flex items-center justify-center bg-black rounded md:rounded-xl border border-white/10 shadow-inner w-10 md:w-28 h-8 md:h-16">
-                            <span className="font-black text-white tabular-nums tracking-tighter drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] leading-none text-xl md:text-6xl">
+                        <div className="flex items-center justify-center bg-white rounded md:rounded-xl border-2 border-[#0000FF] shadow-lg w-10 md:w-28 h-8 md:h-16">
+                            <span className={`font-black text-[#0000FF] tabular-nums tracking-tighter leading-none ${isVertical ? 'text-lg md:text-4xl' : 'text-xl md:text-6xl'}`}>
                                 {match.scoreA}
                             </span>
                         </div>
                     </div>
 
                     {/* Center Info */}
-                    <div className="flex flex-col items-center justify-center border-x border-white/10 z-10 relative flex-shrink-0 w-10 md:w-32 h-full">
-                        <div className="text-[6px] md:text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-0.5">Set {match.currentSet}</div>
-                        <div className={`text-[6px] md:text-xs font-bold text-white px-1 md:px-1.5 py-0.5 rounded ${isSetFinished ? 'bg-yellow-500 text-black' : 'bg-red-600 animate-pulse'}`}>
-                            {isSetFinished ? 'FIN' : 'LIVE'}
+                    <div className="flex flex-col items-center justify-center border-x-2 border-[#facc15] z-10 relative flex-shrink-0 bg-[#facc15] w-14 md:w-40 h-full px-1">
+                        {tournament?.logoUrl && (
+                            <img src={tournament.logoUrl} className="h-4 md:h-10 object-contain mb-0.5 drop-shadow-sm" />
+                        )}
+                        <div className="flex items-center gap-1">
+                            <div className="text-[6px] md:text-[10px] text-[#dc2626] font-bold uppercase tracking-widest">Set {match.currentSet}</div>
+                            {!tournament?.logoUrl && (
+                                <div className={`text-[6px] md:text-xs font-bold px-1 md:px-1.5 py-0.5 rounded ${isSetFinished ? 'bg-white text-[#dc2626]' : 'bg-white text-[#dc2626] animate-pulse'}`}>
+                                    {isSetFinished ? 'FIN' : 'LIVE'}
+                                </div>
+                            )}
                         </div>
-                        <div className="flex gap-0.5 md:gap-1 mt-0.5 md:mt-2">
+                        <div className="flex gap-0.5 md:gap-1 mt-0.5">
                             {sets.map((s, i) => (
                                 (s.scoreA > 0 || s.scoreB > 0) && i < match.currentSet - 1 && (
-                                    <div key={i} className="text-[6px] md:text-[9px] text-slate-400 font-mono font-bold">
+                                    <div key={i} className="text-[6px] md:text-[9px] text-[#dc2626] font-mono font-bold">
                                         {s.scoreA}-{s.scoreB}
                                     </div>
                                 )
@@ -1058,40 +1056,33 @@ const TVOverlay: React.FC<TVOverlayProps> = ({
                     </div>
 
                     {/* Team B Section */}
-                    <div className="flex-1 flex items-center relative h-full px-2 md:px-4 flex-row-reverse">
+                    <div className="flex-1 flex items-center relative h-full px-2 md:px-4 flex-row-reverse bg-[#dc2626]">
                          {/* Logo */}
-                        <div className="bg-slate-800 rounded-lg border border-white/10 shadow-lg relative flex-shrink-0 flex items-center justify-center w-8 h-8 md:w-16 md:h-16 p-0.5 md:p-2 ml-1 md:ml-4">
+                        <div className="bg-white/20 rounded-lg border border-white/20 shadow-lg relative flex-shrink-0 flex items-center justify-center w-8 h-8 md:w-16 md:h-16 p-0.5 md:p-2 ml-1 md:ml-4">
                             {teamB.logoUrl ? <img src={teamB.logoUrl} className="w-full h-full object-contain" /> : <div className="text-red-400 font-bold text-xs md:text-lg">{teamB.name[0]}</div>}
                             {match.servingTeamId === teamB.id && <div className="absolute -top-1 -right-1 text-[8px] md:text-sm bg-white rounded-full leading-none shadow-sm border border-slate-200">🏐</div>}
                         </div>
                         
                         {/* Name */}
                         <div className="flex-1 min-w-0 flex flex-col justify-center ml-1 md:ml-4 items-end text-right">
-                            <h2 className="text-white font-black uppercase italic tracking-tighter leading-none truncate text-[10px] md:text-2xl">{teamB.name}</h2>
+                            <h2 className={`text-white font-black uppercase italic tracking-tighter leading-none truncate ${isVertical ? 'text-[8px] md:text-xl' : 'text-[10px] md:text-2xl'}`}>{teamB.name}</h2>
                             <div className="flex gap-0.5 md:gap-1 mt-0.5 md:mt-1 justify-end">
                                 {sets.filter(s => s.scoreB > s.scoreA && Math.max(s.scoreA, s.scoreB) >= (match.currentSet === match.config.maxSets ? match.config.tieBreakPoints : match.config.pointsPerSet)).map((_,i) => (
-                                    <div key={i} className="w-1.5 h-1.5 md:w-3 md:h-3 bg-yellow-400 rounded-full border border-yellow-600 shadow-[0_0_5px_rgba(250,204,21,0.6)]"></div>
+                                    <div key={i} className="w-1.5 h-1.5 md:w-3 md:h-3 bg-[#facc15] rounded-full border border-yellow-600 shadow-[0_0_5px_rgba(250,204,21,0.6)]"></div>
                                 ))}
                             </div>
                         </div>
 
                         {/* Score */}
-                        <div className="flex items-center justify-center bg-black rounded md:rounded-xl border border-white/10 shadow-inner w-10 md:w-28 h-8 md:h-16">
-                            <span className="font-black text-white tabular-nums tracking-tighter drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] leading-none text-xl md:text-6xl">
+                        <div className="flex items-center justify-center bg-white rounded md:rounded-xl border-2 border-[#dc2626] shadow-lg w-10 md:w-28 h-8 md:h-16">
+                            <span className={`font-black text-[#dc2626] tabular-nums tracking-tighter leading-none ${isVertical ? 'text-lg md:text-4xl' : 'text-xl md:text-6xl'}`}>
                                 {match.scoreB}
                             </span>
                         </div>
                     </div>
 
-                    {/* Tournament Logo (Horizontal Only - End) */}
-                    {!isVertical && tournament?.logoUrl && (
-                        <div className="bg-white/5 px-2 md:px-4 flex items-center justify-center border-l border-white/10">
-                            <img 
-                                src={tournament.logoUrl} 
-                                className="h-8 w-8 md:h-12 md:w-12 object-contain drop-shadow" 
-                            />
-                        </div>
-                    )}
+                    {/* Tournament Logo (Horizontal Only - End) - REMOVED */}
+
                 </div>
             </div>
           )
