@@ -424,12 +424,9 @@ const TVOverlay: React.FC<TVOverlayProps> = ({
             style={{ zIndex: -1 }} 
         />
       ) : (
-        <div className={`absolute inset-0 w-full h-full ${isViewer ? 'bg-transparent' : 'bg-corp-bg'}`} style={{ zIndex: -1 }}>
+        <div className={`absolute inset-0 w-full h-full ${isViewer ? 'bg-transparent' : 'bg-white'}`} style={{ zIndex: -1 }}>
             {!isViewer && (
-                <>
-                    <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-blue-900/40 via-corp-bg to-black"></div>
-                    <div className="absolute top-0 left-0 w-full h-full opacity-20" style={{ backgroundImage: 'radial-gradient(#ffffff 1px, transparent 1px)', backgroundSize: '30px 30px' }}></div>
-                </>
+                <div className="absolute inset-0 bg-white"></div>
             )}
             {/* Viewer Mode: Transparent background for OBS/Overlay usage */}
             {isViewer && (
@@ -439,8 +436,6 @@ const TVOverlay: React.FC<TVOverlayProps> = ({
             )}
         </div>
       )}
-      
-      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none" style={{ zIndex: 0 }}></div>
 
       {/* --- STINGER TRANSITION OVERLAY --- */}
       <div 
@@ -879,8 +874,8 @@ const TVOverlay: React.FC<TVOverlayProps> = ({
       {/* --- COMPARATIVE STATS OVERLAY --- */}
       {visibleStats && !matchEnded && !match.showRotation && (
         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-full max-w-3xl px-2 z-40 transition-transform scale-90 md:scale-100">
-            <div className="bg-black/90 backdrop-blur-xl border border-white/30 rounded-3xl overflow-hidden shadow-[0_0_80px_rgba(0,0,0,0.8)]">
-                 <div className="bg-gradient-to-b from-white/10 to-transparent p-6 flex justify-between items-end border-b border-white/20">
+            <div className="bg-slate-950/95 backdrop-blur-xl border border-white/30 rounded-3xl overflow-hidden shadow-[0_0_80px_rgba(0,0,0,0.8)]">
+                 <div className="bg-gradient-to-b from-white/5 to-transparent p-6 flex justify-between items-end border-b border-white/20">
                     <div className="flex flex-col items-center w-1/4">
                          {teamA.logoUrl ? <img src={teamA.logoUrl} className="w-14 h-14 object-contain bg-white rounded-lg p-1" /> : <div className="w-14 h-14 bg-blue-900 rounded-lg flex items-center justify-center font-bold text-2xl">{teamA.name[0]}</div>}
                          <span className="text-white font-black uppercase text-xs mt-2 text-center">{teamA.name}</span>
@@ -899,10 +894,10 @@ const TVOverlay: React.FC<TVOverlayProps> = ({
 
                  <div className="p-2 space-y-1">
                      {[
-                        { l: statsA.attacks, label: 'ATAQUES', r: statsB.attacks, c: 'text-yellow-400', bg: 'bg-yellow-400/10' },
-                        { l: statsA.blocks, label: 'BLOQUEOS', r: statsB.blocks, c: 'text-blue-400', bg: 'bg-blue-400/10' },
-                        { l: statsA.aces, label: 'ACES', r: statsB.aces, c: 'text-green-400', bg: 'bg-green-400/10' },
-                        { l: statsA.errors, label: 'ERRORES', r: statsB.errors, c: 'text-red-500', bg: 'bg-red-500/10' }
+                        { l: statsA.attacks, label: 'ATAQUES', r: statsB.attacks, c: 'text-yellow-400', bg: 'bg-yellow-900/20' },
+                        { l: statsA.blocks, label: 'BLOQUEOS', r: statsB.blocks, c: 'text-blue-400', bg: 'bg-blue-900/20' },
+                        { l: statsA.aces, label: 'ACES', r: statsB.aces, c: 'text-green-400', bg: 'bg-green-900/20' },
+                        { l: statsA.errors, label: 'ERRORES', r: statsB.errors, c: 'text-red-500', bg: 'bg-red-900/20' }
                      ].map((row, idx) => (
                         <div key={idx} className={`flex items-center py-3 border-b border-white/5 ${row.bg} rounded-lg mb-1`}>
                            <div className={`w-1/3 text-center text-2xl font-black font-mono ${row.c} drop-shadow-sm`}>{row.l}</div>
@@ -997,7 +992,7 @@ const TVOverlay: React.FC<TVOverlayProps> = ({
                     : 'absolute bottom-4 md:bottom-10 left-1/2 -translate-x-1/2 w-[98%] md:w-full max-w-5xl pointer-events-none'
                 }
             `}>
-                <div className={`bg-black/80 backdrop-blur-md border border-white/20 rounded-xl md:rounded-2xl overflow-hidden shadow-2xl flex items-stretch pointer-events-auto shrink-0
+                <div className={`bg-slate-950/95 backdrop-blur-md border border-white/20 rounded-xl md:rounded-2xl overflow-hidden shadow-2xl flex items-stretch pointer-events-auto shrink-0
                     ${isVertical 
                         ? 'rotate-90 origin-center w-[55vh] max-w-none h-16 md:h-20' 
                         : 'w-full flex-row h-14 md:h-24'
@@ -1015,7 +1010,7 @@ const TVOverlay: React.FC<TVOverlayProps> = ({
                     )}
 
                     {/* Team A Section */}
-                    <div className="flex-1 flex items-center relative h-full px-2 md:px-4 bg-gradient-to-r from-blue-900/40 to-transparent">
+                    <div className="flex-1 flex items-center relative h-full px-2 md:px-4 bg-gradient-to-r from-blue-950/90 to-slate-900/90">
                         {/* Logo */}
                         <div className="bg-white/10 rounded-lg border border-white/10 shadow-lg relative flex-shrink-0 flex items-center justify-center w-8 h-8 md:w-16 md:h-16 p-0.5 md:p-2 mr-1 md:mr-4">
                             {teamA.logoUrl ? <img src={teamA.logoUrl} className="w-full h-full object-contain" /> : <div className="text-blue-400 font-bold text-xs md:text-lg">{teamA.name[0]}</div>}
@@ -1041,7 +1036,7 @@ const TVOverlay: React.FC<TVOverlayProps> = ({
                     </div>
 
                     {/* Center Info */}
-                    <div className="flex flex-col items-center justify-center border-x border-white/10 z-10 relative flex-shrink-0 bg-black/50 w-10 md:w-32 h-full">
+                    <div className="flex flex-col items-center justify-center border-x border-white/10 z-10 relative flex-shrink-0 bg-black w-10 md:w-32 h-full">
                         <div className="text-[6px] md:text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-0.5">Set {match.currentSet}</div>
                         <div className={`text-[6px] md:text-xs font-bold text-white px-1 md:px-1.5 py-0.5 rounded ${isSetFinished ? 'bg-yellow-500 text-black' : 'bg-red-600 animate-pulse'}`}>
                             {isSetFinished ? 'FIN' : 'LIVE'}
@@ -1058,7 +1053,7 @@ const TVOverlay: React.FC<TVOverlayProps> = ({
                     </div>
 
                     {/* Team B Section */}
-                    <div className="flex-1 flex items-center relative h-full px-2 md:px-4 flex-row-reverse bg-gradient-to-l from-red-900/40 to-transparent">
+                    <div className="flex-1 flex items-center relative h-full px-2 md:px-4 flex-row-reverse bg-gradient-to-l from-red-950/90 to-slate-900/90">
                          {/* Logo */}
                         <div className="bg-white/10 rounded-lg border border-white/10 shadow-lg relative flex-shrink-0 flex items-center justify-center w-8 h-8 md:w-16 md:h-16 p-0.5 md:p-2 ml-1 md:ml-4">
                             {teamB.logoUrl ? <img src={teamB.logoUrl} className="w-full h-full object-contain" /> : <div className="text-red-400 font-bold text-xs md:text-lg">{teamB.name[0]}</div>}
