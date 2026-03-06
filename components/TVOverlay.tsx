@@ -752,7 +752,7 @@ const TVOverlay: React.FC<TVOverlayProps> = ({
       {/* --- ROTATION OVERLAY (COURT VISUALIZATION) --- */}
       {match.showRotation && (
           <div className={`absolute inset-0 z-40 flex items-center justify-center p-4 animate-in fade-in duration-300 pointer-events-none ${isVertical ? 'rotate-90' : ''}`}>
-              <div className="w-full max-w-3xl flex flex-col gap-4 scale-75 md:scale-90 origin-center pointer-events-auto">
+              <div className={`w-full max-w-3xl flex flex-col gap-4 origin-center pointer-events-auto ${isVertical ? 'scale-75' : 'scale-75 md:scale-90'}`}>
                   <div className="flex justify-between items-center text-white px-4">
                        <h2 className="text-xl font-black uppercase italic tracking-widest drop-shadow-md">Rotación</h2>
                   </div>
