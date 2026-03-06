@@ -3,6 +3,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Peer } from 'peerjs';
 import { LiveMatchState, Team, Tournament, User } from '../types';
 import { ScoreControl } from './ScoreControl';
+import { RotationView } from './RotationView';
 
 interface TVOverlayProps {
   match: LiveMatchState;
@@ -63,6 +64,7 @@ const TVOverlay: React.FC<TVOverlayProps> = ({
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [visibleScoreboard, setVisibleScoreboard] = useState(showScoreboard);
   const [visibleStats, setVisibleStats] = useState(showStatsOverlay);
+  const [isConstructing, setIsConstructing] = useState(false);
   // const [showRotationView, setShowRotationView] = useState(false); // Removed, now using match.showRotation
 
   // Camera Selection State
@@ -158,21 +160,37 @@ const TVOverlay: React.FC<TVOverlayProps> = ({
   }, [showScoreboard]); // Only run when prop changes
 
   useEffect(() => {
-    // Stats Toggle: User requested Sequence (Logo Appears -> Logo Disappears -> Stats Appear)
+    // Stats Toggle: User requested Sequence (Logo Appears -> Logo Disappears -> Construction -> Stats Appear)
     if (showStatsOverlay !== visibleStats) {
         setIsTransitioning(true); // 1. Logo In
         
         // 2. Logo Out (after it fully appeared)
         const hideLogoTimer = setTimeout(() => {
             setIsTransitioning(false);
+            if (showStatsOverlay) {
+                setIsConstructing(true); // 3. Start Construction (only if showing)
+            } else {
+                setVisibleStats(false); // Hide immediately if turning off
+            }
         }, 1000); // Wait 1s keeping logo, then hide
 
-        // 3. Stats Change (after logo is gone)
+        // 4. Show Content (mid-construction)
         const showStatsTimer = setTimeout(() => {
-            setVisibleStats(showStatsOverlay);
-        }, 1600); // 1.0s + 0.6s transition out
+            if (showStatsOverlay) {
+                setVisibleStats(true);
+            }
+        }, 1500); // 1.0s + 0.5s construction
 
-        return () => { clearTimeout(hideLogoTimer); clearTimeout(showStatsTimer); };
+        // 5. End Construction
+        const endConstructionTimer = setTimeout(() => {
+            setIsConstructing(false);
+        }, 2000); // 1.5s + 0.5s
+
+        return () => { 
+            clearTimeout(hideLogoTimer); 
+            clearTimeout(showStatsTimer);
+            clearTimeout(endConstructionTimer);
+        };
     }
   }, [showStatsOverlay]); // Only run when prop changes
 
@@ -751,127 +769,40 @@ const TVOverlay: React.FC<TVOverlayProps> = ({
 
       {/* --- ROTATION OVERLAY (COURT VISUALIZATION) --- */}
       {match.showRotation && (
-          <div className={`absolute inset-0 z-40 flex items-center justify-center p-4 animate-in fade-in duration-300 pointer-events-none ${isVertical ? 'rotate-90' : ''}`}>
-              <div className={`w-full max-w-3xl flex flex-col gap-4 origin-center pointer-events-auto ${isVertical ? 'scale-75' : 'scale-75 md:scale-90'}`}>
-                  <div className="flex justify-between items-center text-white px-4">
-                       <h2 className="text-xl font-black uppercase italic tracking-widest drop-shadow-md">Rotación</h2>
-                  </div>
+          <RotationView 
+            teamA={teamA} 
+            teamB={teamB} 
+            rotationA={match.rotationA} 
+            rotationB={match.rotationB} 
+            isVertical={isVertical} 
+          />
+      )}
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 h-full">
-                      {/* Team A Court */}
-                      <div className="relative bg-blue-600 border-4 border-blue-600 shadow-2xl overflow-hidden aspect-square rounded-xl">
-                          {/* Orange Court Area */}
-                          <div className="absolute inset-2 bg-orange-500 border-2 border-white">
-                              {/* Court Lines */}
-                              <div className="absolute top-1/3 left-0 right-0 h-1 bg-white/80"></div> {/* Attack Line */}
-                              <div className="absolute inset-0 flex items-center justify-center opacity-20 pointer-events-none">
-                                  {teamA.logoUrl ? <img src={teamA.logoUrl} className="w-48 h-48 object-contain grayscale" /> : <div className="text-9xl font-black text-white">{teamA.name[0]}</div>}
-                              </div>
-                              
-                              {/* Team Name Label */}
-                              <div className="absolute top-0 left-0 bg-blue-700 text-white px-3 py-1 rounded-br-lg font-bold uppercase text-sm shadow-lg z-10">
-                                  {teamA.name}
-                              </div>
-
-                              {/* Players Grid */}
-                              <div className="absolute inset-0 grid grid-rows-2 grid-cols-3 p-4 gap-4">
-                                  {/* Front Row: 4, 3, 2 */}
-                                  {[4, 3, 2].map((pos) => {
-                                      const player = match.rotationA[pos - 1];
-                                      return (
-                                          <div key={pos} className="flex flex-col items-center justify-center">
-                                              <div className="w-14 h-14 bg-red-600 rounded-full border-2 border-white shadow-lg flex items-center justify-center relative group">
-                                                  <span className="text-2xl font-black text-white">{player ? player.number : '-'}</span>
-                                                  <div className="absolute -bottom-3 bg-[#3f2e18] text-white text-[9px] px-2 py-0.5 rounded-md uppercase font-bold whitespace-nowrap border border-white/20 shadow-md">
-                                                      {player ? player.name.split(' ')[0] : 'VACÍO'}
-                                                  </div>
-                                                  <div className="absolute top-0 right-0 w-4 h-4 bg-yellow-400 text-black text-[8px] font-bold rounded-full flex items-center justify-center border border-white">
-                                                      {pos}
-                                                  </div>
-                                              </div>
-                                          </div>
-                                      );
-                                  })}
-                                  
-                                  {/* Back Row: 5, 6, 1 */}
-                                  {[5, 6, 1].map((pos) => {
-                                      const player = match.rotationA[pos - 1];
-                                      return (
-                                          <div key={pos} className="flex flex-col items-center justify-center">
-                                              <div className="w-14 h-14 bg-red-600 rounded-full border-2 border-white shadow-lg flex items-center justify-center relative">
-                                                  <span className="text-2xl font-black text-white">{player ? player.number : '-'}</span>
-                                                  <div className="absolute -bottom-3 bg-[#3f2e18] text-white text-[9px] px-2 py-0.5 rounded-md uppercase font-bold whitespace-nowrap border border-white/20 shadow-md">
-                                                      {player ? player.name.split(' ')[0] : 'VACÍO'}
-                                                  </div>
-                                                  <div className="absolute top-0 right-0 w-4 h-4 bg-slate-200 text-black text-[8px] font-bold rounded-full flex items-center justify-center border border-white">
-                                                      {pos}
-                                                  </div>
-                                              </div>
-                                          </div>
-                                      );
-                                  })}
-                              </div>
-                          </div>
-                      </div>
-
-                      {/* Team B Court */}
-                      <div className="relative bg-blue-600 border-4 border-blue-600 shadow-2xl overflow-hidden aspect-square rounded-xl">
-                          {/* Orange Court Area */}
-                          <div className="absolute inset-2 bg-orange-500 border-2 border-white">
-                              {/* Court Lines */}
-                              <div className="absolute top-1/3 left-0 right-0 h-1 bg-white/80"></div> {/* Attack Line */}
-                              <div className="absolute inset-0 flex items-center justify-center opacity-20 pointer-events-none">
-                                  {teamB.logoUrl ? <img src={teamB.logoUrl} className="w-48 h-48 object-contain grayscale" /> : <div className="text-9xl font-black text-white">{teamB.name[0]}</div>}
-                              </div>
-
-                              {/* Team Name Label */}
-                              <div className="absolute top-0 left-0 bg-red-700 text-white px-3 py-1 rounded-br-lg font-bold uppercase text-sm shadow-lg z-10">
-                                  {teamB.name}
-                              </div>
-
-                              {/* Players Grid */}
-                              <div className="absolute inset-0 grid grid-rows-2 grid-cols-3 p-4 gap-4">
-                                  {/* Front Row: 4, 3, 2 */}
-                                  {[4, 3, 2].map((pos) => {
-                                      const player = match.rotationB[pos - 1];
-                                      return (
-                                          <div key={pos} className="flex flex-col items-center justify-center">
-                                              <div className="w-14 h-14 bg-red-600 rounded-full border-2 border-white shadow-lg flex items-center justify-center relative">
-                                                  <span className="text-2xl font-black text-white">{player ? player.number : '-'}</span>
-                                                  <div className="absolute -bottom-3 bg-[#3f2e18] text-white text-[9px] px-2 py-0.5 rounded-md uppercase font-bold whitespace-nowrap border border-white/20 shadow-md">
-                                                      {player ? player.name.split(' ')[0] : 'VACÍO'}
-                                                  </div>
-                                                  <div className="absolute top-0 right-0 w-4 h-4 bg-yellow-400 text-black text-[8px] font-bold rounded-full flex items-center justify-center border border-white">
-                                                      {pos}
-                                                  </div>
-                                              </div>
-                                          </div>
-                                      );
-                                  })}
-                                  
-                                  {/* Back Row: 5, 6, 1 */}
-                                  {[5, 6, 1].map((pos) => {
-                                      const player = match.rotationB[pos - 1];
-                                      return (
-                                          <div key={pos} className="flex flex-col items-center justify-center">
-                                              <div className="w-14 h-14 bg-red-600 rounded-full border-2 border-white shadow-lg flex items-center justify-center relative">
-                                                  <span className="text-2xl font-black text-white">{player ? player.number : '-'}</span>
-                                                  <div className="absolute -bottom-3 bg-[#3f2e18] text-white text-[9px] px-2 py-0.5 rounded-md uppercase font-bold whitespace-nowrap border border-white/20 shadow-md">
-                                                      {player ? player.name.split(' ')[0] : 'VACÍO'}
-                                                  </div>
-                                                  <div className="absolute top-0 right-0 w-4 h-4 bg-slate-200 text-black text-[8px] font-bold rounded-full flex items-center justify-center border border-white">
-                                                      {pos}
-                                                  </div>
-                                              </div>
-                                          </div>
-                                      );
-                                  })}
-                              </div>
-                          </div>
-                      </div>
-                  </div>
-              </div>
-          </div>
+      {/* --- CONSTRUCTION EFFECT --- */}
+      {isConstructing && (
+        <div className={`absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-full max-w-3xl px-2 z-40 pointer-events-none
+            ${isVertical ? 'rotate-90 scale-75 origin-center h-[50vh] w-[80vh]' : 'scale-90 md:scale-100'}
+        `}>
+             <div className="relative w-full h-[400px] border-2 border-yellow-400/50 bg-black/10 backdrop-blur-sm overflow-hidden animate-pulse">
+                {/* Horizontal Lines */}
+                <div className="absolute top-0 left-0 w-full h-[1px] bg-yellow-400/50 animate-[ping_1s_cubic-bezier(0,0,0.2,1)_infinite]"></div>
+                <div className="absolute bottom-0 left-0 w-full h-[1px] bg-yellow-400/50 animate-[ping_1s_cubic-bezier(0,0,0.2,1)_infinite]"></div>
+                
+                {/* Tech Corners */}
+                <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-yellow-400"></div>
+                <div className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-yellow-400"></div>
+                <div className="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-yellow-400"></div>
+                <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-yellow-400"></div>
+                
+                {/* Center Cross */}
+                <div className="absolute top-1/2 left-1/2 w-full h-[1px] bg-yellow-400/30 -translate-x-1/2"></div>
+                <div className="absolute top-1/2 left-1/2 h-full w-[1px] bg-yellow-400/30 -translate-y-1/2"></div>
+                
+                <div className="absolute inset-0 flex items-center justify-center">
+                    <span className="text-yellow-400 font-mono text-xs tracking-[0.5em] animate-pulse">LOADING STATS...</span>
+                </div>
+             </div>
+        </div>
       )}
 
       {/* --- COMPARATIVE STATS OVERLAY --- */}

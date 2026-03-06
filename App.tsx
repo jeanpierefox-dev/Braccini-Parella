@@ -86,6 +86,16 @@ export const App: React.FC = () => {
   const [tvMode, setTvMode] = useState(false);
   const [showStreamGuide, setShowStreamGuide] = useState(false);
   const [editingPlayer, setEditingPlayer] = useState<Player | null>(null);
+  const [isVertical, setIsVertical] = useState(false);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsVertical(window.innerWidth < window.innerHeight);
+    };
+    window.addEventListener('resize', handleResize);
+    handleResize();
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
   const [loading, setLoading] = useState(false);
   const [viewingSetStats, setViewingSetStats] = useState<{setNum: number, data: MatchSet} | null>(null);
   
@@ -1468,19 +1478,21 @@ export const App: React.FC = () => {
                             </div>
                             
                             {/* Courts */}
-                            <div className="flex flex-col gap-1">
+                            <div className={`flex ${isVertical ? 'flex-row' : 'flex-col'} gap-1`}>
                                 <Court 
                                     players={liveMatch.rotationA} 
                                     serving={liveMatch.servingTeamId === activeTournament.fixtures?.find(f => f.id === liveMatch.matchId)?.teamAId}
                                     teamName={activeTournament.teams.find(t => t.id === activeTournament.fixtures?.find(f => f.id === liveMatch.matchId)?.teamAId)?.name!}
                                     variant={currentUser.role === 'REFEREE' ? 'referee' : 'default'}
+                                    isVertical={isVertical}
                                 />
-                                <div className="h-1 bg-white/20 w-full rounded-full"></div>
+                                <div className={`${isVertical ? 'w-1 h-full' : 'h-1 w-full'} bg-white/20 rounded-full`}></div>
                                 <Court 
                                     players={liveMatch.rotationB} 
                                     serving={liveMatch.servingTeamId === activeTournament.fixtures?.find(f => f.id === liveMatch.matchId)?.teamBId}
                                     teamName={activeTournament.teams.find(t => t.id === activeTournament.fixtures?.find(f => f.id === liveMatch.matchId)?.teamBId)?.name!}
                                     variant={currentUser.role === 'REFEREE' ? 'referee' : 'default'}
+                                    isVertical={isVertical}
                                 />
                             </div>
                         </div>
