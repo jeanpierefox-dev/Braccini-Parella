@@ -778,28 +778,28 @@ const TVOverlay: React.FC<TVOverlayProps> = ({
           />
       )}
 
-      {/* --- CONSTRUCTION EFFECT --- */}
+      {/* --- CONSTRUCTION EFFECT (VNL STYLE) --- */}
       {isConstructing && (
         <div className={`absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-full max-w-3xl px-2 z-40 pointer-events-none
             ${isVertical ? 'rotate-90 scale-75 origin-center h-[50vh] w-[80vh]' : 'scale-90 md:scale-100'}
         `}>
-             <div className="relative w-full h-[400px] border-2 border-yellow-400/50 bg-black/10 backdrop-blur-sm overflow-hidden animate-pulse">
-                {/* Horizontal Lines */}
-                <div className="absolute top-0 left-0 w-full h-[1px] bg-yellow-400/50 animate-[ping_1s_cubic-bezier(0,0,0.2,1)_infinite]"></div>
-                <div className="absolute bottom-0 left-0 w-full h-[1px] bg-yellow-400/50 animate-[ping_1s_cubic-bezier(0,0,0.2,1)_infinite]"></div>
+             <div className="relative w-full h-[400px] flex items-center justify-center">
+                {/* Horizontal Lines - Enter from sides to center */}
+                <div className="absolute top-0 left-0 h-[2px] bg-yellow-400 w-1/2 animate-[slideInLeft_0.4s_ease-out_forwards] origin-left scale-x-0 shadow-[0_0_10px_rgba(250,204,21,0.8)]"></div>
+                <div className="absolute top-0 right-0 h-[2px] bg-yellow-400 w-1/2 animate-[slideInRight_0.4s_ease-out_forwards] origin-right scale-x-0 shadow-[0_0_10px_rgba(250,204,21,0.8)]"></div>
                 
-                {/* Tech Corners */}
-                <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-yellow-400"></div>
-                <div className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-yellow-400"></div>
-                <div className="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-yellow-400"></div>
-                <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-yellow-400"></div>
-                
-                {/* Center Cross */}
-                <div className="absolute top-1/2 left-1/2 w-full h-[1px] bg-yellow-400/30 -translate-x-1/2"></div>
-                <div className="absolute top-1/2 left-1/2 h-full w-[1px] bg-yellow-400/30 -translate-y-1/2"></div>
-                
+                <div className="absolute bottom-0 left-0 h-[2px] bg-yellow-400 w-1/2 animate-[slideInLeft_0.4s_ease-out_forwards] origin-left scale-x-0 shadow-[0_0_10px_rgba(250,204,21,0.8)]"></div>
+                <div className="absolute bottom-0 right-0 h-[2px] bg-yellow-400 w-1/2 animate-[slideInRight_0.4s_ease-out_forwards] origin-right scale-x-0 shadow-[0_0_10px_rgba(250,204,21,0.8)]"></div>
+
+                {/* Vertical Lines - Grow from center */}
+                <div className="absolute left-0 top-0 w-[2px] bg-yellow-400 h-full animate-[scaleY_0.4s_ease-out_0.3s_forwards] origin-center scale-y-0 shadow-[0_0_10px_rgba(250,204,21,0.8)]"></div>
+                <div className="absolute right-0 top-0 w-[2px] bg-yellow-400 h-full animate-[scaleY_0.4s_ease-out_0.3s_forwards] origin-center scale-y-0 shadow-[0_0_10px_rgba(250,204,21,0.8)]"></div>
+
+                {/* Central Crosshair / Target */}
                 <div className="absolute inset-0 flex items-center justify-center">
-                    <span className="text-yellow-400 font-mono text-xs tracking-[0.5em] animate-pulse">LOADING STATS...</span>
+                    <div className="w-full h-[1px] bg-yellow-400/30 animate-[ping_0.5s_ease-out_forwards]"></div>
+                    <div className="h-full w-[1px] bg-yellow-400/30 animate-[ping_0.5s_ease-out_forwards]"></div>
+                    <span className="text-yellow-400 font-mono text-xs tracking-[0.5em] animate-pulse bg-black/50 px-2">LOADING DATA...</span>
                 </div>
              </div>
         </div>

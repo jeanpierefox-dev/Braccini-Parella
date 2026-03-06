@@ -17,8 +17,8 @@ export const RotationView: React.FC<RotationViewProps> = ({ teamA, teamB, rotati
     `}>
         <div className={`flex gap-4 pointer-events-auto items-center justify-center
             ${isVertical 
-                ? 'flex-row w-[80vh] h-[40vw] scale-75' // Rotated: Use height as width, width as height. Side-by-side.
-                : 'flex-col md:flex-row w-full max-w-5xl scale-75 md:scale-90' // Standard: Stacked on mobile, side-by-side on desktop
+                ? 'flex-row w-[85vh] h-[90vw] scale-90' // Rotated: Width becomes Height (85% screen height), Height becomes Width (90% screen width)
+                : 'flex-col md:flex-row w-full max-w-5xl scale-75 md:scale-90'
             }
         `}>
             {/* Team A Court */}
