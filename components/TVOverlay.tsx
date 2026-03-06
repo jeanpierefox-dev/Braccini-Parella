@@ -444,7 +444,7 @@ const TVOverlay: React.FC<TVOverlayProps> = ({
 
       {/* --- STINGER TRANSITION OVERLAY --- */}
       <div 
-        className={`absolute inset-0 z-50 flex items-center justify-center transition-transform duration-500 ease-in-out ${isTransitioning ? 'scale-100' : 'scale-0'} origin-center rounded-full md:rounded-none`}
+        className={`absolute inset-0 z-50 flex items-center justify-center transition-transform duration-500 ease-in-out ${isTransitioning ? 'scale-100' : 'scale-0'} origin-center rounded-full md:rounded-none ${isVertical ? 'rotate-90' : ''}`}
         style={{ pointerEvents: 'none' }}
       >
           <div className="flex flex-col items-center animate-pulse">
@@ -751,7 +751,7 @@ const TVOverlay: React.FC<TVOverlayProps> = ({
 
       {/* --- ROTATION OVERLAY (COURT VISUALIZATION) --- */}
       {match.showRotation && (
-          <div className="absolute inset-0 z-40 flex items-center justify-center p-4 animate-in fade-in duration-300 pointer-events-none">
+          <div className={`absolute inset-0 z-40 flex items-center justify-center p-4 animate-in fade-in duration-300 pointer-events-none ${isVertical ? 'rotate-90' : ''}`}>
               <div className="w-full max-w-3xl flex flex-col gap-4 scale-75 md:scale-90 origin-center pointer-events-auto">
                   <div className="flex justify-between items-center text-white px-4">
                        <h2 className="text-xl font-black uppercase italic tracking-widest drop-shadow-md">Rotación</h2>
@@ -876,8 +876,10 @@ const TVOverlay: React.FC<TVOverlayProps> = ({
 
       {/* --- COMPARATIVE STATS OVERLAY --- */}
       {visibleStats && !matchEnded && !match.showRotation && (
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-full max-w-3xl px-2 z-40 transition-transform scale-90 md:scale-100">
-            <div className="bg-[#0000FF] border-4 border-[#facc15] rounded-3xl overflow-hidden shadow-[0_0_30px_rgba(250,204,21,0.4)]">
+        <div className={`absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-full max-w-3xl px-2 z-40 transition-transform 
+            ${isVertical ? 'rotate-90 scale-75 origin-center h-[50vh] w-[80vh] flex items-center justify-center' : 'scale-90 md:scale-100'}
+        `}>
+            <div className="bg-[#0000FF] border-4 border-[#facc15] rounded-3xl overflow-hidden shadow-[0_0_30px_rgba(250,204,21,0.4)] w-full">
                  <div className="bg-[#dc2626] p-6 flex justify-between items-end border-b-4 border-[#facc15]">
                     <div className="flex flex-col items-center w-1/4">
                          {teamA.logoUrl ? <img src={teamA.logoUrl} className="w-14 h-14 object-contain bg-white rounded-lg p-1" /> : <div className="w-14 h-14 bg-blue-900 rounded-lg flex items-center justify-center font-bold text-2xl">{teamA.name[0]}</div>}

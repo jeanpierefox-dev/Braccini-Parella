@@ -10,6 +10,7 @@ import { CloudConfig } from './components/CloudConfig';
 import { StandingsTable } from './components/StandingsTable'; 
 import { TopPlayers } from './components/TopPlayers'; 
 import { ProfileEditor } from './components/ProfileEditor';
+import { StreamGuideModal } from './components/StreamGuideModal';
 import { 
   Tournament, Team, LiveMatchState, 
   Player, PlayerRole, MatchSet, RequestItem, User, MatchConfig
@@ -83,6 +84,7 @@ export const App: React.FC = () => {
   
   // UI States
   const [tvMode, setTvMode] = useState(false);
+  const [showStreamGuide, setShowStreamGuide] = useState(false);
   const [editingPlayer, setEditingPlayer] = useState<Player | null>(null);
   const [loading, setLoading] = useState(false);
   const [viewingSetStats, setViewingSetStats] = useState<{setNum: number, data: MatchSet} | null>(null);
@@ -1156,6 +1158,7 @@ export const App: React.FC = () => {
       currentView={currentView}
       isCloudConnected={isCloudConnected}
       onOpenCloudConfig={() => setShowCloudConfig(true)}
+      onOpenStreamGuide={() => setShowStreamGuide(true)}
     >
       {/* CLOUD CONFIG MODAL */}
       {showCloudConfig && (
@@ -2014,6 +2017,13 @@ export const App: React.FC = () => {
             }}
           />
       )}
+
+      {/* STREAM GUIDE MODAL */}
+      <StreamGuideModal 
+        isOpen={showStreamGuide} 
+        onClose={() => setShowStreamGuide(false)} 
+        matchUrl={window.location.href} 
+      />
 
     </Layout>
   );

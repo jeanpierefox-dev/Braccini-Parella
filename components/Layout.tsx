@@ -10,6 +10,7 @@ interface LayoutProps {
   currentView: string;
   isCloudConnected: boolean;
   onOpenCloudConfig: () => void;
+  onOpenStreamGuide: () => void;
 }
 
 // Corporate Hexagon Logo with stylized "J"
@@ -37,7 +38,8 @@ export const Layout: React.FC<LayoutProps> = ({
   onNavigate, 
   currentView,
   isCloudConnected,
-  onOpenCloudConfig
+  onOpenCloudConfig,
+  onOpenStreamGuide
 }) => {
   const isAdmin = currentUser.role === 'ADMIN';
   const canManage = isAdmin || currentUser.role.includes('COACH');
@@ -113,6 +115,17 @@ export const Layout: React.FC<LayoutProps> = ({
 
             {/* Right Actions */}
             <div className="flex items-center gap-4 ml-auto">
+               {/* Stream Guide Button */}
+               {isAdmin && (
+                   <button 
+                     onClick={onOpenStreamGuide}
+                     className="flex items-center gap-2 px-3 py-1.5 rounded-full border border-purple-500/20 bg-purple-500/10 text-purple-400 text-[10px] font-bold uppercase tracking-widest hover:bg-purple-500/20 transition mr-2"
+                   >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1-.1z"/></svg>
+                      <span className="hidden sm:inline">Stream</span>
+                   </button>
+               )}
+
                {/* Cloud Indicator */}
                {isAdmin && (
                    <button 
