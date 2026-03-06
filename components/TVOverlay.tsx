@@ -805,43 +805,116 @@ const TVOverlay: React.FC<TVOverlayProps> = ({
         </div>
       )}
 
-      {/* --- COMPARATIVE STATS OVERLAY --- */}
+      {/* --- COMPARATIVE STATS OVERLAY (VNL STYLE) --- */}
       {visibleStats && !matchEnded && !match.showRotation && (
-        <div className={`absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-full max-w-3xl px-2 z-40 transition-transform 
-            ${isVertical ? 'rotate-90 scale-75 origin-center h-[50vh] w-[80vh] flex items-center justify-center' : 'scale-90 md:scale-100'}
+        <div className={`absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-full max-w-5xl px-2 z-40 transition-transform 
+            ${isVertical ? 'rotate-90 scale-[0.85] origin-center h-[50vh] w-[85vh] flex items-center justify-center' : 'scale-90 md:scale-100'}
         `}>
-            <div className="bg-[#0000FF] border-4 border-[#facc15] rounded-3xl overflow-hidden shadow-[0_0_30px_rgba(250,204,21,0.4)] w-full">
-                 <div className="bg-[#dc2626] p-6 flex justify-between items-end border-b-4 border-[#facc15]">
-                    <div className="flex flex-col items-center w-1/4">
-                         {teamA.logoUrl ? <img src={teamA.logoUrl} className="w-14 h-14 object-contain bg-white rounded-lg p-1" /> : <div className="w-14 h-14 bg-blue-900 rounded-lg flex items-center justify-center font-bold text-2xl">{teamA.name[0]}</div>}
-                         <span className="text-white font-black uppercase text-xs mt-2 text-center">{teamA.name}</span>
+            <div className="relative w-full max-w-3xl mx-auto">
+                
+                {/* Floating Logo Box - Positioned absolutely to the left of the stats table */}
+                <div className="absolute -left-24 top-14 z-30 shadow-2xl hidden md:block">
+                    <div className="bg-[#1e3a8a] w-28 h-28 flex items-center justify-center border-4 border-white">
+                         {tournament?.logoUrl ? (
+                             <img src={tournament.logoUrl} className="w-24 h-24 object-contain" />
+                         ) : (
+                             <div className="text-white font-black text-center leading-none">
+                                 <div className="text-4xl italic">VNL</div>
+                                 <div className="text-[9px] tracking-widest uppercase mt-1">Volleyball<br/>Nations League</div>
+                             </div>
+                         )}
                     </div>
-                    <div className="flex flex-col items-center mb-2">
-                         <span className="text-[#facc15] font-black italic text-3xl drop-shadow-[0_2px_0_rgba(220,38,38,0.8)]">VS</span>
-                         <span className="text-white text-[10px] uppercase font-bold tracking-[0.2em]">
-                             {match.statsSetIndex !== undefined ? `ESTADÍSTICAS SET ${match.statsSetIndex + 1}` : 'ESTADÍSTICAS TOTALES'}
-                         </span>
+                </div>
+                {/* Mobile Logo - Visible only on small screens, positioned differently or hidden to save space */}
+                <div className="absolute -left-4 top-14 z-30 shadow-2xl md:hidden scale-75 origin-right">
+                     <div className="bg-[#1e3a8a] w-20 h-20 flex items-center justify-center border-2 border-white">
+                         {tournament?.logoUrl ? (
+                             <img src={tournament.logoUrl} className="w-16 h-16 object-contain" />
+                         ) : (
+                             <div className="text-white font-black text-center leading-none">
+                                 <div className="text-2xl italic">VNL</div>
+                             </div>
+                         )}
                     </div>
-                    <div className="flex flex-col items-center w-1/4">
-                         {teamB.logoUrl ? <img src={teamB.logoUrl} className="w-14 h-14 object-contain bg-white rounded-lg p-1" /> : <div className="w-14 h-14 bg-red-900 rounded-lg flex items-center justify-center font-bold text-2xl">{teamB.name[0]}</div>}
-                         <span className="text-white font-black uppercase text-xs mt-2 text-center">{teamB.name}</span>
-                    </div>
-                 </div>
+                </div>
 
-                 <div className="p-2 space-y-1">
-                     {[
-                        { l: statsA.attacks, label: 'ATAQUES', r: statsB.attacks, c: 'text-[#facc15]', bg: 'bg-[#0000FF] border-[#facc15]/30' },
-                        { l: statsA.blocks, label: 'BLOQUEOS', r: statsB.blocks, c: 'text-white', bg: 'bg-[#0000FF] border-[#facc15]/30' },
-                        { l: statsA.aces, label: 'ACES', r: statsB.aces, c: 'text-white', bg: 'bg-[#0000FF] border-[#facc15]/30' },
-                        { l: statsA.errors, label: 'ERRORES', r: statsB.errors, c: 'text-red-200', bg: 'bg-[#0000FF] border-[#facc15]/30' }
-                     ].map((row, idx) => (
-                        <div key={idx} className={`flex items-center py-3 border ${row.bg} rounded-lg mb-1`}>
-                           <div className={`w-1/3 text-center text-2xl font-black font-mono ${row.c} drop-shadow-sm`}>{row.l}</div>
-                           <div className="w-1/3 text-center text-xs font-bold text-white uppercase tracking-widest opacity-80">{row.label}</div>
-                           <div className={`w-1/3 text-center text-2xl font-black font-mono ${row.c} drop-shadow-sm`}>{row.r}</div>
+                {/* Main Content Column */}
+                <div className="flex flex-col w-full">
+                    
+                    {/* Top Labels Row */}
+                    <div className="flex items-end pl-0 md:pl-0 relative z-20">
+                        {/* Set Label */}
+                        <div className="bg-[#ef4444] text-white h-14 px-8 flex items-center justify-center border-4 border-white border-b-0 shadow-md ml-16 md:ml-0">
+                            <span className="font-black italic text-3xl uppercase tracking-tighter drop-shadow-md">
+                                SET {match.currentSet}
+                            </span>
                         </div>
-                     ))}
-                 </div>
+
+                        {/* Team Stats Label */}
+                        <div className="bg-white text-[#1e3a8a] h-10 px-6 flex items-center justify-center border-t-4 border-r-4 border-white shadow-sm mb-0">
+                            <span className="font-black italic text-sm uppercase tracking-widest">
+                                TEAM STATS
+                            </span>
+                        </div>
+                    </div>
+
+                    {/* Main Stats Container */}
+                    <div className="bg-white border-4 border-white shadow-2xl relative z-10">
+                        
+                        {/* Team Header Row */}
+                        <div className="flex h-16 relative border-b-2 border-white">
+                            {/* Team A Name Bar */}
+                            <div className="flex-1 bg-[#1e3a8a] flex items-center justify-center relative overflow-hidden">
+                                <div className="absolute left-0 top-0 bottom-0 w-3 bg-[#facc15]"></div> {/* Yellow Accent */}
+                                <span className="text-white font-black italic text-3xl uppercase tracking-tighter z-10 drop-shadow-md">{teamA.name}</span>
+                            </div>
+
+                            {/* Scores Center */}
+                            <div className="w-40 flex relative z-20">
+                                <div className="flex-1 bg-[#ef4444] flex items-center justify-center border-r-2 border-white">
+                                    <span className="text-white font-black text-4xl">{match.scoreA}</span>
+                                </div>
+                                <div className="flex-1 bg-[#ef4444] flex items-center justify-center">
+                                    <span className="text-white font-black text-4xl">{match.scoreB}</span>
+                                </div>
+                            </div>
+
+                            {/* Team B Name Bar */}
+                            <div className="flex-1 bg-[#1e3a8a] flex items-center justify-center relative overflow-hidden">
+                                <div className="absolute right-0 top-0 bottom-0 w-3 bg-[#ef4444]"></div> {/* Red Accent */}
+                                <span className="text-white font-black italic text-3xl uppercase tracking-tighter z-10 drop-shadow-md">{teamB.name}</span>
+                            </div>
+                        </div>
+
+                        {/* Stats Rows */}
+                        <div className="flex flex-col">
+                            {[
+                                { l: sets.filter(s => s.scoreA > s.scoreB).length, label: 'SETS', r: sets.filter(s => s.scoreB > s.scoreA).length },
+                                { l: statsA.attacks, label: 'ATTACKS', r: statsB.attacks },
+                                { l: statsA.blocks, label: 'BLOCKS', r: statsB.blocks },
+                                { l: statsA.aces, label: 'SERVES', r: statsB.aces },
+                                { l: statsA.errors, label: 'OPPONENT ERRORS', r: statsB.errors }
+                            ].map((row, idx) => (
+                                <div key={idx} className={`flex h-12 items-center border-b border-white/10 ${idx % 2 === 0 ? 'bg-[#dc2626]' : 'bg-[#1e3a8a]'}`}>
+                                    {/* Team A Value */}
+                                    <div className="flex-1 text-center">
+                                        <span className="text-white font-black text-2xl drop-shadow-sm">{row.l}</span>
+                                    </div>
+
+                                    {/* Label */}
+                                    <div className="w-56 text-center">
+                                        <span className="text-white font-bold text-base uppercase tracking-widest opacity-100 drop-shadow-md">{row.label}</span>
+                                    </div>
+
+                                    {/* Team B Value */}
+                                    <div className="flex-1 text-center">
+                                        <span className="text-white font-black text-2xl drop-shadow-sm">{row.r}</span>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
       )}
