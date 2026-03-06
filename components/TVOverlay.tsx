@@ -928,12 +928,21 @@ const TVOverlay: React.FC<TVOverlayProps> = ({
                     : 'absolute bottom-4 md:bottom-10 left-1/2 -translate-x-1/2 w-[98%] md:w-full max-w-5xl pointer-events-none'
                 }
             `}>
-                <div className={`bg-white border-4 border-[#facc15] rounded-xl md:rounded-2xl overflow-hidden shadow-[0_0_30px_rgba(250,204,21,0.3)] flex items-stretch pointer-events-auto shrink-0
+                <div className={`bg-white border-4 border-[#facc15] rounded-xl md:rounded-2xl overflow-hidden shadow-[0_0_30px_rgba(250,204,21,0.3)] flex items-stretch pointer-events-auto shrink-0 relative
                     ${isVertical 
                         ? 'rotate-90 origin-center w-[50vh] max-w-none h-12 md:h-16' 
                         : 'w-full flex-row h-14 md:h-24'
                     }
                 `}>
+                    {/* Tech Overlay Lines */}
+                    <div className="absolute inset-0 pointer-events-none z-20">
+                        <div className="absolute top-0 left-0 w-full h-[1px] bg-yellow-400/50"></div>
+                        <div className="absolute bottom-0 left-0 w-full h-[1px] bg-yellow-400/50"></div>
+                        <div className="absolute top-0 left-0 w-3 h-3 border-t-2 border-l-2 border-yellow-600"></div>
+                        <div className="absolute top-0 right-0 w-3 h-3 border-t-2 border-r-2 border-yellow-600"></div>
+                        <div className="absolute bottom-0 left-0 w-3 h-3 border-b-2 border-l-2 border-yellow-600"></div>
+                        <div className="absolute bottom-0 right-0 w-3 h-3 border-b-2 border-r-2 border-yellow-600"></div>
+                    </div>
                     
                     {/* Tournament Logo (Vertical Only - Start) - REMOVED */}
 

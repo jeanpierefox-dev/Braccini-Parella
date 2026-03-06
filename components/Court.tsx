@@ -4,7 +4,7 @@ import { Player } from '../types';
 import { POSITIONS_LAYOUT } from '../constants';
 
 interface CourtProps {
-  players: Player[]; // Must be 6 players
+  players: (Player | null)[]; // Must be 6 players, can be null
   serving: boolean; // Is this side serving?
   teamName: string;
   rotationError?: boolean;
