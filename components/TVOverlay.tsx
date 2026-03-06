@@ -778,28 +778,41 @@ const TVOverlay: React.FC<TVOverlayProps> = ({
           />
       )}
 
-      {/* --- CONSTRUCTION EFFECT (VNL STYLE) --- */}
+      {/* --- CONSTRUCTION EFFECT (VNL STYLE - STATS GRID) --- */}
       {isConstructing && (
-        <div className={`absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-full max-w-3xl px-2 z-40 pointer-events-none
-            ${isVertical ? 'rotate-90 scale-75 origin-center h-[50vh] w-[80vh]' : 'scale-90 md:scale-100'}
+        <div className={`absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-full max-w-5xl px-2 z-40 pointer-events-none
+            ${isVertical ? 'rotate-90 scale-[0.85] origin-center h-[50vh] w-[85vh]' : 'scale-90 md:scale-100'}
         `}>
              <div className="relative w-full h-[400px] flex items-center justify-center">
-                {/* Horizontal Lines - Enter from sides to center */}
-                <div className="absolute top-0 left-0 h-[2px] bg-yellow-400 w-1/2 animate-[slideInLeft_0.4s_ease-out_forwards] origin-left scale-x-0 shadow-[0_0_10px_rgba(250,204,21,0.8)]"></div>
-                <div className="absolute top-0 right-0 h-[2px] bg-yellow-400 w-1/2 animate-[slideInRight_0.4s_ease-out_forwards] origin-right scale-x-0 shadow-[0_0_10px_rgba(250,204,21,0.8)]"></div>
                 
-                <div className="absolute bottom-0 left-0 h-[2px] bg-yellow-400 w-1/2 animate-[slideInLeft_0.4s_ease-out_forwards] origin-left scale-x-0 shadow-[0_0_10px_rgba(250,204,21,0.8)]"></div>
-                <div className="absolute bottom-0 right-0 h-[2px] bg-yellow-400 w-1/2 animate-[slideInRight_0.4s_ease-out_forwards] origin-right scale-x-0 shadow-[0_0_10px_rgba(250,204,21,0.8)]"></div>
+                {/* 1. Main Horizontal Lines (Top/Bottom) - Draw from center out */}
+                <div className="absolute top-0 left-1/2 w-full h-[2px] bg-white transform -translate-x-1/2 animate-[slideInLeft_0.4s_ease-out_forwards] origin-center scale-x-0 shadow-[0_0_10px_rgba(255,255,255,0.8)]"></div>
+                <div className="absolute bottom-0 left-1/2 w-full h-[2px] bg-white transform -translate-x-1/2 animate-[slideInRight_0.4s_ease-out_forwards] origin-center scale-x-0 shadow-[0_0_10px_rgba(255,255,255,0.8)]"></div>
+                
+                {/* 2. Main Vertical Lines (Left/Right) - Draw from center out */}
+                <div className="absolute left-0 top-1/2 h-full w-[2px] bg-white transform -translate-y-1/2 animate-[scaleY_0.4s_ease-out_0.2s_forwards] origin-center scale-y-0 shadow-[0_0_10px_rgba(255,255,255,0.8)]"></div>
+                <div className="absolute right-0 top-1/2 h-full w-[2px] bg-white transform -translate-y-1/2 animate-[scaleY_0.4s_ease-out_0.2s_forwards] origin-center scale-y-0 shadow-[0_0_10px_rgba(255,255,255,0.8)]"></div>
 
-                {/* Vertical Lines - Grow from center */}
-                <div className="absolute left-0 top-0 w-[2px] bg-yellow-400 h-full animate-[scaleY_0.4s_ease-out_0.3s_forwards] origin-center scale-y-0 shadow-[0_0_10px_rgba(250,204,21,0.8)]"></div>
-                <div className="absolute right-0 top-0 w-[2px] bg-yellow-400 h-full animate-[scaleY_0.4s_ease-out_0.3s_forwards] origin-center scale-y-0 shadow-[0_0_10px_rgba(250,204,21,0.8)]"></div>
+                {/* 3. Internal Grid Lines - Creating the "Construction" feel */}
+                {/* Horizontal Dividers */}
+                <div className="absolute top-1/4 left-0 w-full h-[1px] bg-white/50 animate-[slideInLeft_0.5s_ease-out_0.3s_forwards] origin-left scale-x-0"></div>
+                <div className="absolute top-2/4 left-0 w-full h-[1px] bg-white/50 animate-[slideInRight_0.5s_ease-out_0.4s_forwards] origin-right scale-x-0"></div>
+                <div className="absolute top-3/4 left-0 w-full h-[1px] bg-white/50 animate-[slideInLeft_0.5s_ease-out_0.5s_forwards] origin-left scale-x-0"></div>
 
-                {/* Central Crosshair / Target */}
+                {/* Vertical Dividers */}
+                <div className="absolute top-0 left-1/4 h-full w-[1px] bg-white/50 animate-[scaleY_0.5s_ease-out_0.3s_forwards] origin-top scale-y-0"></div>
+                <div className="absolute top-0 left-2/4 h-full w-[1px] bg-white/50 animate-[scaleY_0.5s_ease-out_0.4s_forwards] origin-bottom scale-y-0"></div>
+                <div className="absolute top-0 left-3/4 h-full w-[1px] bg-white/50 animate-[scaleY_0.5s_ease-out_0.5s_forwards] origin-top scale-y-0"></div>
+
+                {/* 4. Intersection Flashes */}
+                <div className="absolute top-0 left-0 w-2 h-2 bg-white rounded-full animate-[ping_0.3s_ease-out_0.2s_forwards] opacity-0"></div>
+                <div className="absolute top-0 right-0 w-2 h-2 bg-white rounded-full animate-[ping_0.3s_ease-out_0.2s_forwards] opacity-0"></div>
+                <div className="absolute bottom-0 left-0 w-2 h-2 bg-white rounded-full animate-[ping_0.3s_ease-out_0.2s_forwards] opacity-0"></div>
+                <div className="absolute bottom-0 right-0 w-2 h-2 bg-white rounded-full animate-[ping_0.3s_ease-out_0.2s_forwards] opacity-0"></div>
+
+                {/* Central Loading Text */}
                 <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="w-full h-[1px] bg-yellow-400/30 animate-[ping_0.5s_ease-out_forwards]"></div>
-                    <div className="h-full w-[1px] bg-yellow-400/30 animate-[ping_0.5s_ease-out_forwards]"></div>
-                    <span className="text-yellow-400 font-mono text-xs tracking-[0.5em] animate-pulse bg-black/50 px-2">LOADING DATA...</span>
+                    <span className="text-white font-mono text-xs tracking-[0.5em] animate-pulse bg-black/50 px-4 py-1 border border-white/30">LOADING STATS...</span>
                 </div>
              </div>
         </div>
