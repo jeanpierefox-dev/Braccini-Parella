@@ -132,6 +132,7 @@ export const App: React.FC = () => {
   const [newTeamName, setNewTeamName] = useState('');
   const [newTeamCoach, setNewTeamCoach] = useState('');
   const [newTeamLogo, setNewTeamLogo] = useState('');
+  const [editingTeamId, setEditingTeamId] = useState<string | null>(null);
 
   // Auto-Start Countdown State
   const [nextSetCountdown, setNextSetCountdown] = useState<number | null>(null);
@@ -255,17 +256,45 @@ export const App: React.FC = () => {
   const handleAddTeam = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTeamName.trim()) return;
-    const newTeamId = `t-${Date.now()}`;
-    const newTeam: Team = {
-      id: newTeamId,
-      name: newTeamName,
-      color: '#1e3a8a',
-      coachName: newTeamCoach || 'Sin entrenador',
-      logoUrl: newTeamLogo,
-      players: Array.from({ length: 12 }, (_, i) => createEmptyPlayer(`${newTeamId}-p${i+1}`, i + 1))
-    };
-    updateTeams([...registeredTeams, newTeam]);
+    
+    if (editingTeamId) {
+        const updated = registeredTeams.map(t => {
+            if (t.id === editingTeamId) {
+                return { ...t, name: newTeamName, coachName: newTeamCoach || 'Sin entrenador', logoUrl: newTeamLogo };
+            }
+            return t;
+        });
+        updateTeams(updated);
+        setEditingTeamId(null);
+    } else {
+        const newTeamId = `t-${Date.now()}`;
+        const newTeam: Team = {
+          id: newTeamId,
+          name: newTeamName,
+          color: '#1e3a8a',
+          coachName: newTeamCoach || 'Sin entrenador',
+          logoUrl: newTeamLogo,
+          players: Array.from({ length: 12 }, (_, i) => createEmptyPlayer(`${newTeamId}-p${i+1}`, i + 1))
+        };
+        updateTeams([...registeredTeams, newTeam]);
+    }
     setNewTeamName(''); setNewTeamCoach(''); setNewTeamLogo('');
+  };
+
+  const handleEditTeam = (team: Team) => {
+    if (!isAdmin) return;
+    setEditingTeamId(team.id);
+    setNewTeamName(team.name);
+    setNewTeamCoach(team.coachName);
+    setNewTeamLogo(team.logoUrl || '');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const cancelEditTeam = () => {
+    setEditingTeamId(null);
+    setNewTeamName('');
+    setNewTeamCoach('');
+    setNewTeamLogo('');
   };
 
   const handleDeleteTeam = (teamId: string) => {
@@ -1422,9 +1451,52 @@ export const App: React.FC = () => {
                      </div>
                      
                      {/* Game Area */}
-                     <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                        {/* Team A Control */}
-                        <div className="lg:col-span-3 space-y-4">
+                     <div className="flex flex-col lg:grid lg:grid-cols-12 gap-6">
+                        
+                        {/* 1. Scoreboard (Top on Mobile, Center Top on Desktop via Flex Column) */}
+                        <div className="order-1 lg:col-span-6 lg:order-2 flex flex-col gap-4">
+                            {/* Scoreboard Display */}
+                            <div className="bg-black/60 rounded-xl border border-white/10 p-4 flex justify-between items-center shadow-2xl relative overflow-hidden">
+                                <div className="text-4xl lg:text-6xl font-black text-white tabular-nums w-1/3 text-left">{liveMatch.scoreA}</div>
+                                <div className="flex flex-col items-center z-10 w-1/3">
+                                    <div className="text-[10px] md:text-xs font-bold text-slate-500 uppercase tracking-widest text-center truncate w-full">Set {liveMatch.currentSet}</div>
+                                    <div className="text-xl md:text-2xl font-black text-white italic">VS</div>
+                                    {liveMatch.status === 'finished_set' && (
+                                        <button onClick={handleStartNextSet} className="mt-2 bg-green-600 hover:bg-green-500 text-white px-4 py-1 rounded-full text-xs font-bold uppercase animate-pulse shadow-lg whitespace-nowrap">
+                                            Siguiente Set
+                                        </button>
+                                    )}
+                                    {liveMatch.status === 'warmup' && isAdmin && (
+                                        <button onClick={handleStartGame} className="mt-2 bg-green-600 hover:bg-green-500 text-white px-4 py-1 rounded-full text-xs font-bold uppercase animate-pulse shadow-lg whitespace-nowrap">
+                                            Iniciar Partido
+                                        </button>
+                                    )}
+                                </div>
+                                <div className="text-4xl lg:text-6xl font-black text-white tabular-nums w-1/3 text-right">{liveMatch.scoreB}</div>
+                            </div>
+                            
+                            {/* Courts - Desktop Only here, hidden on mobile */}
+                            <div className={`hidden lg:flex ${isVertical ? 'flex-row' : 'flex-col'} gap-1`}>
+                                <Court 
+                                    players={liveMatch.rotationA} 
+                                    serving={liveMatch.servingTeamId === activeTournament.fixtures?.find(f => f.id === liveMatch.matchId)?.teamAId}
+                                    teamName={activeTournament.teams.find(t => t.id === activeTournament.fixtures?.find(f => f.id === liveMatch.matchId)?.teamAId)?.name!}
+                                    variant={currentUser.role === 'REFEREE' ? 'referee' : 'default'}
+                                    isVertical={isVertical}
+                                />
+                                <div className={`${isVertical ? 'w-1 h-full' : 'h-1 w-full'} bg-white/20 rounded-full`}></div>
+                                <Court 
+                                    players={liveMatch.rotationB} 
+                                    serving={liveMatch.servingTeamId === activeTournament.fixtures?.find(f => f.id === liveMatch.matchId)?.teamBId}
+                                    teamName={activeTournament.teams.find(t => t.id === activeTournament.fixtures?.find(f => f.id === liveMatch.matchId)?.teamBId)?.name!}
+                                    variant={currentUser.role === 'REFEREE' ? 'referee' : 'default'}
+                                    isVertical={isVertical}
+                                />
+                            </div>
+                        </div>
+
+                        {/* 2. Team A Control (Middle Left on Desktop) */}
+                        <div className="order-2 lg:col-span-3 lg:order-1 space-y-4">
                             <ScoreControl 
                                 role={currentUser.role}
                                 linkedTeamId={currentUser.linkedTeamId}
@@ -1455,50 +1527,8 @@ export const App: React.FC = () => {
                              </div>
                         </div>
                         
-                        {/* Court Center */}
-                        <div className="lg:col-span-6 flex flex-col gap-4">
-                            {/* Scoreboard Display */}
-                            <div className="bg-black/60 rounded-xl border border-white/10 p-4 flex justify-between items-center shadow-2xl relative overflow-hidden">
-                                <div className="text-4xl lg:text-6xl font-black text-white tabular-nums">{liveMatch.scoreA}</div>
-                                <div className="flex flex-col items-center z-10">
-                                    <div className="text-xs font-bold text-slate-500 uppercase tracking-widest">Set {liveMatch.currentSet}</div>
-                                    <div className="text-2xl font-black text-white italic">VS</div>
-                                    {liveMatch.status === 'finished_set' && (
-                                        <button onClick={handleStartNextSet} className="mt-2 bg-green-600 hover:bg-green-500 text-white px-4 py-1 rounded-full text-xs font-bold uppercase animate-pulse shadow-lg">
-                                            Siguiente Set
-                                        </button>
-                                    )}
-                                    {liveMatch.status === 'warmup' && isAdmin && (
-                                        <button onClick={handleStartGame} className="mt-2 bg-green-600 hover:bg-green-500 text-white px-4 py-1 rounded-full text-xs font-bold uppercase animate-pulse shadow-lg">
-                                            Iniciar Partido
-                                        </button>
-                                    )}
-                                </div>
-                                <div className="text-4xl lg:text-6xl font-black text-white tabular-nums">{liveMatch.scoreB}</div>
-                            </div>
-                            
-                            {/* Courts */}
-                            <div className={`flex ${isVertical ? 'flex-row' : 'flex-col'} gap-1`}>
-                                <Court 
-                                    players={liveMatch.rotationA} 
-                                    serving={liveMatch.servingTeamId === activeTournament.fixtures?.find(f => f.id === liveMatch.matchId)?.teamAId}
-                                    teamName={activeTournament.teams.find(t => t.id === activeTournament.fixtures?.find(f => f.id === liveMatch.matchId)?.teamAId)?.name!}
-                                    variant={currentUser.role === 'REFEREE' ? 'referee' : 'default'}
-                                    isVertical={isVertical}
-                                />
-                                <div className={`${isVertical ? 'w-1 h-full' : 'h-1 w-full'} bg-white/20 rounded-full`}></div>
-                                <Court 
-                                    players={liveMatch.rotationB} 
-                                    serving={liveMatch.servingTeamId === activeTournament.fixtures?.find(f => f.id === liveMatch.matchId)?.teamBId}
-                                    teamName={activeTournament.teams.find(t => t.id === activeTournament.fixtures?.find(f => f.id === liveMatch.matchId)?.teamBId)?.name!}
-                                    variant={currentUser.role === 'REFEREE' ? 'referee' : 'default'}
-                                    isVertical={isVertical}
-                                />
-                            </div>
-                        </div>
-
-                        {/* Team B Control */}
-                        <div className="lg:col-span-3 space-y-4">
+                        {/* 3. Team B Control (Middle Right on Desktop) */}
+                        <div className="order-3 lg:col-span-3 lg:order-3 space-y-4">
                             <ScoreControl 
                                 role={currentUser.role}
                                 linkedTeamId={currentUser.linkedTeamId}
@@ -1525,6 +1555,28 @@ export const App: React.FC = () => {
                                      ))}
                                  </div>
                              </div>
+                        </div>
+
+                        {/* 4. Action Log and Courts - Mobile Only here */}
+                        <div className="order-4 lg:hidden flex flex-col gap-4">
+                            {/* Courts */}
+                            <div className="flex flex-col gap-1">
+                                <Court 
+                                    players={liveMatch.rotationA} 
+                                    serving={liveMatch.servingTeamId === activeTournament.fixtures?.find(f => f.id === liveMatch.matchId)?.teamAId}
+                                    teamName={activeTournament.teams.find(t => t.id === activeTournament.fixtures?.find(f => f.id === liveMatch.matchId)?.teamAId)?.name!}
+                                    variant={currentUser.role === 'REFEREE' ? 'referee' : 'default'}
+                                    isVertical={isVertical}
+                                />
+                                <div className={`${isVertical ? 'w-1 h-full' : 'h-1 w-full'} bg-white/20 rounded-full`}></div>
+                                <Court 
+                                    players={liveMatch.rotationB} 
+                                    serving={liveMatch.servingTeamId === activeTournament.fixtures?.find(f => f.id === liveMatch.matchId)?.teamBId}
+                                    teamName={activeTournament.teams.find(t => t.id === activeTournament.fixtures?.find(f => f.id === liveMatch.matchId)?.teamBId)?.name!}
+                                    variant={currentUser.role === 'REFEREE' ? 'referee' : 'default'}
+                                    isVertical={isVertical}
+                                />
+                            </div>
                         </div>
                      </div>
                 </div>
@@ -1559,9 +1611,16 @@ export const App: React.FC = () => {
                                    {newTeamLogo && <img src={newTeamLogo} className="w-10 h-10 object-contain bg-white rounded p-1" />}
                                </div>
                            </div>
-                           <button type="submit" className="w-full md:w-auto bg-vnl-accent hover:bg-cyan-400 text-black font-black px-8 py-3 rounded shadow-[0_0_15px_rgba(6,182,212,0.3)] transition uppercase text-xs tracking-widest">
-                               Agregar
-                           </button>
+                           <div className="flex gap-2 w-full md:w-auto mt-4 md:mt-0">
+                               <button type="submit" className="w-full bg-vnl-accent hover:bg-cyan-400 text-black font-black px-8 py-3 rounded shadow-[0_0_15px_rgba(6,182,212,0.3)] transition uppercase text-xs tracking-widest shrink-0">
+                                   {editingTeamId ? 'Guardar' : 'Agregar'}
+                               </button>
+                               {editingTeamId && (
+                                   <button type="button" onClick={cancelEditTeam} className="w-full bg-slate-600 hover:bg-slate-500 text-white font-black px-8 py-3 rounded transition uppercase text-xs tracking-widest shrink-0">
+                                       Cancelar
+                                   </button>
+                               )}
+                           </div>
                        </form>
                    </div>
                )}
@@ -1578,7 +1637,12 @@ export const App: React.FC = () => {
                                        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Coach: {team.coachName}</p>
                                    </div>
                                </div>
-                               {isAdmin && <button onClick={() => handleDeleteTeam(team.id)} className="text-red-500 hover:text-red-400 font-bold text-xs uppercase">Eliminar</button>}
+                               {isAdmin && (
+                                   <div className="flex gap-2">
+                                       <button onClick={() => handleEditTeam(team)} className="text-yellow-500 hover:text-yellow-400 font-bold text-xs uppercase">Modificar</button>
+                                       <button onClick={() => handleDeleteTeam(team.id)} className="text-red-500 hover:text-red-400 font-bold text-xs uppercase">Eliminar</button>
+                                   </div>
+                               )}
                            </div>
                            
                            {/* Players */}
