@@ -242,13 +242,13 @@ export const App: React.FC = () => {
 
 
   // --- SYNC HELPERS ---
-  const updateUsers = (newUsers: User[]) => { setUsers(newUsers); if (isCloudConnected) pushData('users', newUsers); };
-  const updateTeams = (newTeams: Team[]) => { setRegisteredTeams(newTeams); if (isCloudConnected) pushData('teams', newTeams); };
-  const updateTournaments = (newTourneys: Tournament[]) => { setTournaments(newTourneys); if (isCloudConnected) pushData('tournaments', newTourneys); };
+  const updateUsers = (newUsers: User[]) => { setUsers(newUsers); pushData('users', newUsers); };
+  const updateTeams = (newTeams: Team[]) => { setRegisteredTeams(newTeams); pushData('teams', newTeams); };
+  const updateTournaments = (newTourneys: Tournament[]) => { setTournaments(newTourneys); pushData('tournaments', newTourneys); };
   const updateLiveMatch = (update: LiveMatchState | null | ((prev: LiveMatchState | null) => LiveMatchState | null)) => {
       setLiveMatch(prev => {
           const newVal = update instanceof Function ? update(prev) : update;
-          if (isCloudConnected) pushData('liveMatch', newVal);
+          pushData('liveMatch', newVal);
           return newVal;
       });
   };
@@ -307,7 +307,7 @@ export const App: React.FC = () => {
   const handleSystemReset = async () => {
       if (currentUser?.role !== 'ADMIN') return;
       if (!confirm("⚠️ RESET TOTAL: ¿Borrar todo el sistema?")) return;
-      if (isCloudConnected) await resetCloudData([DEFAULT_ADMIN]);
+      await resetCloudData([DEFAULT_ADMIN]);
       setUsers([DEFAULT_ADMIN]);
       setRegisteredTeams([]);
       setTournaments([]);
@@ -421,7 +421,7 @@ export const App: React.FC = () => {
       setActiveTournamentId(null);
       setCurrentView('lobby');
       setTournaments(updatedList);
-      if (isCloudConnected) await pushData('tournaments', updatedList);
+      await pushData('tournaments', updatedList);
   };
 
   const updateActiveTournament = (updates: Partial<Tournament>) => {

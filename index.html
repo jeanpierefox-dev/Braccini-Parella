@@ -5,7 +5,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="JSport Braccini - Sistema profesional de gestión de torneos de voley, puntuación en vivo y estadísticas." />
-    <meta name="theme-color" content="#0f172a" />
+    <meta name="theme-color" content="#0d1b2a" />
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><defs><linearGradient id=%22g%22 x1=%220%25%22 y1=%220%25%22 x2=%22100%25%22 y2=%22100%25%22><stop offset=%220%25%22 stop-color=%22%2360a5fa%22/><stop offset=%22100%25%22 stop-color=%22%232563eb%22/></linearGradient></defs><path d=%22M50 5 L90 25 L90 75 L50 95 L10 75 L10 25 Z%22 fill=%22url(%23g)%22/><path d=%22M60 30 L60 65 A15 15 0 0 1 30 65%22 fill=%22none%22 stroke=%22white%22 stroke-width=%228%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22/><circle cx=%2265%22 cy=%2225%22 r=%225%22 fill=%22white%22/></svg>" type="image/svg+xml">
     <title>JSport Braccini</title>
     <script src="https://cdn.tailwindcss.com"></script>
@@ -18,8 +18,8 @@
               mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', 'monospace'],
             },
             colors: {
-              'corp-bg': '#0f172a', // Slate 900 - Deep Blue Background
-              'corp-panel': '#1e293b', // Slate 800 - Lighter Panel
+              'corp-bg': '#0d1b2a', // Oxford Blue
+              'corp-panel': '#1b263b', // Lighter Navy Panel
               'corp-accent': '#3b82f6', // Blue 500 - Royal Blue Action
               'corp-accent-hover': '#2563eb', // Blue 600
               'corp-secondary': '#64748b', // Slate 500 - Secondary Text
@@ -40,7 +40,7 @@
     width: 6px;
   }
   ::-webkit-scrollbar-track {
-    background: #0f172a; 
+    background: #0d1b2a; 
   }
   ::-webkit-scrollbar-thumb {
     background: #334155; 
@@ -50,10 +50,7 @@
     background: #475569; 
   }
   body {
-    background-color: #0f172a;
-    /* Subtle texture instead of heavy gradients */
-    background-image: radial-gradient(#1e293b 1px, transparent 1px);
-    background-size: 20px 20px;
+    background-color: #0d1b2a;
   }
   
   /* Construction Animations */
@@ -68,6 +65,16 @@
   @keyframes scaleY {
     from { transform: scaleY(0); }
     to { transform: scaleY(1); }
+  }
+  @keyframes flyInFromCorner {
+    0% { transform: translate(50vw, 50vh) scale(0); opacity: 0; }
+    50% { opacity: 1; transform: translate(25vw, 25vh) scale(0.5); }
+    100% { transform: translate(0, 0) scale(1); opacity: 1; }
+  }
+  @keyframes flyOutToCorner {
+    0% { transform: translate(0, 0) scale(1); opacity: 1; }
+    50% { opacity: 1; transform: translate(25vw, 25vh) scale(0.5); }
+    100% { transform: translate(50vw, 50vh) scale(0); opacity: 0; }
   }
 </style>
 <script type="importmap">

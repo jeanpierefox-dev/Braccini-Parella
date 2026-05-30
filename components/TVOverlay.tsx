@@ -61,7 +61,7 @@ const TVOverlay: React.FC<TVOverlayProps> = ({
   const [showControls, setShowControls] = useState(false);
 
   // Transition States (Stinger)
-  const [isTransitioning, setIsTransitioning] = useState(false);
+  const [stingerAnim, setStingerAnim] = useState<'idle' | 'in' | 'out'>('idle');
   const [visibleScoreboard, setVisibleScoreboard] = useState(showScoreboard);
   const [visibleStats, setVisibleStats] = useState(showStatsOverlay);
   const [isConstructing, setIsConstructing] = useState(false);
@@ -72,6 +72,7 @@ const TVOverlay: React.FC<TVOverlayProps> = ({
   const [selectedDeviceId, setSelectedDeviceId] = useState<string>('');
   const [showSettings, setShowSettings] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
+  const [chromaMode, setChromaMode] = useState<'none' | 'green' | 'magenta' | 'blue'>('none');
   const [showTikTokHelp, setShowTikTokHelp] = useState(false);
   const [showMobileHelp, setShowMobileHelp] = useState(false);
   const [showOBSHelp, setShowOBSHelp] = useState(false);
@@ -153,46 +154,59 @@ const TVOverlay: React.FC<TVOverlayProps> = ({
 
   // Handle Transitions ("Stinger Effect")
   useEffect(() => {
-    // Scoreboard Toggle: Sync local state with prop
+    // Scoreboard Toggle Transition
     if (showScoreboard !== visibleScoreboard) {
-        setVisibleScoreboard(showScoreboard);
+        if (showScoreboard) {
+            // Turn ON: Logo flies in, disappears, then scoreboard shows
+            setStingerAnim('in');
+            const showBoardTimer = setTimeout(() => {
+                setStingerAnim('idle');
+                setVisibleScoreboard(true);
+            }, 700);
+            return () => clearTimeout(showBoardTimer);
+        } else {
+            // Turn OFF: Scoreboard disappears, then logo flies out
+            setVisibleScoreboard(false);
+            setStingerAnim('out');
+            const resetAnimTimer = setTimeout(() => {
+                setStingerAnim('idle');
+            }, 700);
+            return () => clearTimeout(resetAnimTimer);
+        }
     }
-  }, [showScoreboard]); // Only run when prop changes
-
+  }, [showScoreboard]); 
+  
   useEffect(() => {
-    // Stats Toggle: User requested Sequence (Logo Appears -> Logo Disappears -> Construction -> Stats Appear)
+    // Stats Toggle Transition
     if (showStatsOverlay !== visibleStats) {
-        setIsTransitioning(true); // 1. Logo In
-        
-        // 2. Logo Out (after it fully appeared)
-        const hideLogoTimer = setTimeout(() => {
-            setIsTransitioning(false);
-            if (showStatsOverlay) {
-                setIsConstructing(true); // 3. Start Construction (only if showing)
-            } else {
-                setVisibleStats(false); // Hide immediately if turning off
-            }
-        }, 1000); // Wait 1s keeping logo, then hide
-
-        // 4. Show Content (mid-construction)
-        const showStatsTimer = setTimeout(() => {
-            if (showStatsOverlay) {
+        if (showStatsOverlay) {
+            // Turn ON
+            setStingerAnim('in');
+            const hideLogoTimer = setTimeout(() => {
+                setStingerAnim('idle');
+                setIsConstructing(true);
+            }, 700);
+            
+            const showStatsTimer = setTimeout(() => {
                 setVisibleStats(true);
-            }
-        }, 1500); // 1.0s + 0.5s construction
+            }, 1200);
 
-        // 5. End Construction
-        const endConstructionTimer = setTimeout(() => {
-            setIsConstructing(false);
-        }, 2000); // 1.5s + 0.5s
-
-        return () => { 
-            clearTimeout(hideLogoTimer); 
-            clearTimeout(showStatsTimer);
-            clearTimeout(endConstructionTimer);
-        };
+            const endConstructionTimer = setTimeout(() => {
+                setIsConstructing(false);
+            }, 1700);
+            
+            return () => { clearTimeout(hideLogoTimer); clearTimeout(showStatsTimer); clearTimeout(endConstructionTimer); };
+        } else {
+            // Turn OFF
+            setVisibleStats(false);
+            setStingerAnim('out');
+            const resetAnimTimer = setTimeout(() => {
+                setStingerAnim('idle');
+            }, 700);
+            return () => clearTimeout(resetAnimTimer);
+        }
     }
-  }, [showStatsOverlay]); // Only run when prop changes
+  }, [showStatsOverlay]);
 
   // ... (rest of the code)
 
@@ -235,6 +249,18 @@ const TVOverlay: React.FC<TVOverlayProps> = ({
   // Activate Camera Logic
   useEffect(() => {
     if (isViewer) return; // Skip camera for viewers
+    if (chromaMode !== 'none') {
+       // Stop any existing stream
+       if (videoRef.current && videoRef.current.srcObject) {
+         try {
+            const oldStream = videoRef.current.srcObject as MediaStream;
+            oldStream.getTracks().forEach(track => track.stop());
+         } catch(e) { }
+         videoRef.current.srcObject = null;
+       }
+       setCameraError(null);
+       return;
+    }
 
     let activeStream: MediaStream | null = null;
     let isMounted = true;
@@ -365,7 +391,7 @@ const TVOverlay: React.FC<TVOverlayProps> = ({
          } catch (e) { /* ignore */ }
        }
     };
-  }, [isViewer, selectedDeviceId]);
+  }, [isViewer, selectedDeviceId, chromaMode]);
 
   // Determine match state
   const sets = match.sets || [];
@@ -431,44 +457,54 @@ const TVOverlay: React.FC<TVOverlayProps> = ({
   return (
     <div className="fixed inset-0 z-[100] flex flex-col justify-end pb-0 font-sans bg-transparent overflow-hidden transition-all duration-300">
       
-      {/* Background */}
-      {(!isViewer && !cameraError) || (isViewer && viewerStream) ? (
-        <video 
-            ref={videoRef}
-            autoPlay 
-            playsInline 
-            muted={!isViewer}
-            className="absolute inset-0 w-full h-full object-cover"
-            style={{ zIndex: -1 }} 
+      {/* Background (Chroma Key, Solid Color, or Camera) */}
+      {chromaMode !== 'none' ? (
+        <div 
+          className="absolute inset-0 w-full h-full pointer-events-none" 
+          style={{ 
+            zIndex: -1, 
+            backgroundColor: chromaMode === 'green' ? '#00FF00' : chromaMode === 'magenta' ? '#FF00FF' : '#0d1b2a' 
+          }} 
         />
+      ) : (!isViewer && !cameraError) || (isViewer && viewerStream) ? (
+        <>
+            <video 
+                ref={videoRef}
+                autoPlay 
+                playsInline 
+                muted={!isViewer}
+                className="absolute inset-0 w-full h-full object-cover"
+                style={{ zIndex: -1 }} 
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none" style={{ zIndex: 0 }}></div>
+        </>
       ) : (
         <div className={`absolute inset-0 w-full h-full ${isViewer ? 'bg-transparent' : 'bg-corp-bg'}`} style={{ zIndex: -1 }}>
-            {!isViewer && (
-                <>
-                    <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-blue-900/40 via-corp-bg to-black"></div>
-                    <div className="absolute top-0 left-0 w-full h-full opacity-20" style={{ backgroundImage: 'radial-gradient(#ffffff 1px, transparent 1px)', backgroundSize: '30px 30px' }}></div>
-                </>
-            )}
             {/* Viewer Mode: Transparent background for OBS/Overlay usage */}
             {isViewer && (
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                    {/* Optional: Placeholder or just transparent */}
+                    {/* Optional Placeholder */}
                 </div>
             )}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none" style={{ zIndex: 0 }}></div>
         </div>
       )}
-      
-      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none" style={{ zIndex: 0 }}></div>
 
       {/* --- STINGER TRANSITION OVERLAY --- */}
+      {stingerAnim !== 'idle' && (
       <div 
-        className={`absolute inset-0 z-50 flex items-center justify-center transition-transform duration-500 ease-in-out ${isTransitioning ? 'scale-100' : 'scale-0'} origin-center rounded-full md:rounded-none ${isVertical ? 'rotate-90' : ''}`}
-        style={{ pointerEvents: 'none' }}
+        className={`absolute inset-0 z-50 flex items-center justify-center pointer-events-none rounded-full md:rounded-none ${isVertical ? 'rotate-90' : ''}`}
+        style={{ 
+            animation: stingerAnim === 'in' 
+                ? 'flyInFromCorner 0.7s ease-out forwards' 
+                : 'flyOutToCorner 0.7s ease-in forwards' 
+        }}
       >
-          <div className="flex flex-col items-center animate-pulse">
-              {tournament?.logoUrl ? <img src={tournament.logoUrl} className="w-48 h-48 object-contain mb-4" /> : <div className="text-9xl">🏐</div>}
+          <div className="flex flex-col items-center">
+              {tournament?.logoUrl ? <img src={tournament.logoUrl} className="w-48 h-48 sm:w-64 sm:h-64 object-contain drop-shadow-[0_0_30px_rgba(255,255,255,0.5)]" /> : <div className="text-[10rem] sm:text-[14rem] drop-shadow-[0_0_30px_rgba(255,255,255,0.5)]">🏐</div>}
           </div>
       </div>
+      )}
 
 
       {/* UI Toggle Button (Always visible but subtle) */}
@@ -555,6 +591,21 @@ const TVOverlay: React.FC<TVOverlayProps> = ({
                                       {device.label || `Cámara ${device.deviceId.slice(0, 5)}...`}
                                   </option>
                               ))}
+                          </select>
+                      </div>
+
+                      {/* Chroma Key Select */}
+                      <div>
+                          <label className="block text-[9px] font-black text-slate-400 uppercase mb-2 tracking-widest">Fondo (Pantalla / TV)</label>
+                          <select 
+                             value={chromaMode}
+                             onChange={(e) => setChromaMode(e.target.value as any)}
+                             className="w-full bg-white/10 text-white text-[10px] p-2 rounded outline-none border border-white/10 focus:border-corp-accent"
+                          >
+                              <option value="none">Cámara (Predeterminado)</option>
+                              <option value="blue">Fondo Azul Oscuro (#0d1b2a)</option>
+                              <option value="green">Verde Chroma (#00FF00)</option>
+                              <option value="magenta">Magenta Chroma (#FF00FF)</option>
                           </select>
                       </div>
 
