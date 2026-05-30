@@ -66,15 +66,25 @@
     from { transform: scaleY(0); }
     to { transform: scaleY(1); }
   }
-  @keyframes flyInFromCorner {
-    0% { transform: translate(50vw, 50vh) scale(0); opacity: 0; }
-    50% { opacity: 1; transform: translate(25vw, 25vh) scale(0.5); }
-    100% { transform: translate(0, 0) scale(1); opacity: 1; }
+  @keyframes emphasisIn {
+    0% { transform: translateX(-100vw) skewX(-20deg) scale(0.5); opacity: 0; }
+    70% { transform: translateX(5vw) skewX(10deg) scale(1.05); opacity: 1; }
+    100% { transform: translateX(0) skewX(0deg) scale(1); opacity: 1; }
   }
-  @keyframes flyOutToCorner {
-    0% { transform: translate(0, 0) scale(1); opacity: 1; }
-    50% { opacity: 1; transform: translate(25vw, 25vh) scale(0.5); }
-    100% { transform: translate(50vw, 50vh) scale(0); opacity: 0; }
+  @keyframes emphasisOut {
+    0% { transform: translateX(0) skewX(0deg) scale(1); opacity: 1; }
+    30% { transform: translateX(-5vw) skewX(-10deg) scale(1.05); opacity: 1; }
+    100% { transform: translateX(100vw) skewX(20deg) scale(0.5); opacity: 0; }
+  }
+  @keyframes drawBoardIn {
+    0% { clip-path: inset(50% 50% 50% 50%); opacity: 0; transform: scale(0.95); }
+    40% { clip-path: inset(50% 0% 50% 0%); opacity: 1; transform: scale(1); }
+    100% { clip-path: inset(0% 0% 0% 0%); opacity: 1; transform: scale(1); }
+  }
+  @keyframes drawBoardOut {
+    0% { clip-path: inset(0% 0% 0% 0%); opacity: 1; transform: scale(1); }
+    60% { clip-path: inset(50% 0% 50% 0%); opacity: 1; transform: scale(1); }
+    100% { clip-path: inset(50% 50% 50% 50%); opacity: 0; transform: scale(0.95); }
   }
 </style>
 <script type="importmap">

@@ -60,9 +60,12 @@ const TVOverlay: React.FC<TVOverlayProps> = ({
   // Controls State
   const [showControls, setShowControls] = useState(false);
 
-  // Transition States (Stinger)
+  // Transition States
   const [stingerAnim, setStingerAnim] = useState<'idle' | 'in' | 'out'>('idle');
-  const [visibleScoreboard, setVisibleScoreboard] = useState(showScoreboard);
+  const [boardAnim, setBoardAnim] = useState<'idle' | 'in' | 'out'>('idle');
+  const [renderScoreboard, setRenderScoreboard] = useState(showScoreboard);
+  const [visibleScoreboard, setVisibleScoreboard] = useState(showScoreboard); // keep for prop sync logic
+  
   const [visibleStats, setVisibleStats] = useState(showStatsOverlay);
   const [isConstructing, setIsConstructing] = useState(false);
   // const [showRotationView, setShowRotationView] = useState(false); // Removed, now using match.showRotation
@@ -154,26 +157,38 @@ const TVOverlay: React.FC<TVOverlayProps> = ({
 
   // Handle Transitions ("Stinger Effect")
   useEffect(() => {
+    let timers: NodeJS.Timeout[] = [];
     // Scoreboard Toggle Transition
     if (showScoreboard !== visibleScoreboard) {
         if (showScoreboard) {
-            // Turn ON: Logo flies in, disappears, then scoreboard shows
+            // Turn ON: Logo In -> Logo Out -> Scoreboard In
             setStingerAnim('in');
-            const showBoardTimer = setTimeout(() => {
-                setStingerAnim('idle');
-                setVisibleScoreboard(true);
-            }, 700);
-            return () => clearTimeout(showBoardTimer);
+            timers.push(setTimeout(() => {
+                setStingerAnim('out');
+                timers.push(setTimeout(() => {
+                    setStingerAnim('idle');
+                    setRenderScoreboard(true);
+                    setBoardAnim('in');
+                    timers.push(setTimeout(() => setBoardAnim('idle'), 800));
+                }, 800));
+            }, 800));
+            setVisibleScoreboard(true);
         } else {
-            // Turn OFF: Scoreboard disappears, then logo flies out
+            // Turn OFF: Scoreboard Out -> Logo In -> Logo Out
+            setBoardAnim('out');
+            timers.push(setTimeout(() => {
+                setRenderScoreboard(false);
+                setBoardAnim('idle');
+                setStingerAnim('in');
+                timers.push(setTimeout(() => {
+                    setStingerAnim('out');
+                    timers.push(setTimeout(() => setStingerAnim('idle'), 800));
+                }, 800));
+            }, 800));
             setVisibleScoreboard(false);
-            setStingerAnim('out');
-            const resetAnimTimer = setTimeout(() => {
-                setStingerAnim('idle');
-            }, 700);
-            return () => clearTimeout(resetAnimTimer);
         }
     }
+    return () => timers.forEach(clearTimeout);
   }, [showScoreboard]); 
   
   useEffect(() => {
@@ -496,8 +511,8 @@ const TVOverlay: React.FC<TVOverlayProps> = ({
         className={`absolute inset-0 z-50 flex items-center justify-center pointer-events-none rounded-full md:rounded-none ${isVertical ? 'rotate-90' : ''}`}
         style={{ 
             animation: stingerAnim === 'in' 
-                ? 'flyInFromCorner 0.7s ease-out forwards' 
-                : 'flyOutToCorner 0.7s ease-in forwards' 
+                ? 'emphasisIn 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) forwards' 
+                : 'emphasisOut 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) forwards' 
         }}
       >
           <div className="flex flex-col items-center">
@@ -1058,13 +1073,19 @@ const TVOverlay: React.FC<TVOverlayProps> = ({
           </div>
       ) : (
           /* --- SCOREBOARD (RESPONSIVE VERTICAL/HORIZONTAL) --- */
-          visibleScoreboard && !isPreMatch && !match.showRotation && (
+          renderScoreboard && !isPreMatch && !match.showRotation && (
             <div className={`relative z-10 transition-all duration-300
                 ${isVertical 
                     ? 'absolute top-0 left-0 h-full w-32 md:w-40 flex items-center justify-center pointer-events-none' 
                     : 'absolute bottom-4 md:bottom-10 left-1/2 -translate-x-1/2 w-[98%] md:w-full max-w-5xl pointer-events-none'
                 }
-            `}>
+            `}
+            style={(boardAnim === 'in' || boardAnim === 'out') ? {
+                animation: boardAnim === 'in' 
+                    ? 'drawBoardIn 0.8s cubic-bezier(0.8, 0, 0.2, 1) forwards' 
+                    : 'drawBoardOut 0.8s cubic-bezier(0.8, 0, 0.2, 1) forwards'
+            } : {}}
+            >
                 <div className={`bg-white border-4 border-[#facc15] rounded-xl md:rounded-2xl overflow-hidden shadow-[0_0_30px_rgba(250,204,21,0.3)] flex items-stretch pointer-events-auto shrink-0 relative
                     ${isVertical 
                         ? 'rotate-90 origin-center w-[50vh] max-w-none h-12 md:h-16' 
