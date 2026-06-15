@@ -330,70 +330,76 @@ export const App: React.FC = () => {
   const handleUpdateUser = (updatedUser: User) => { updateUsers(users.map(u => u.id === updatedUser.id ? updatedUser : u)); };
 
   const handleCreateTournament = async () => {
-    if (!currentUser) return;
-    if (selectedTeamIds.length < 2) { alert("Debes seleccionar al menos 2 equipos para el torneo."); return; }
-    if (newTourneyData.format === 'KNOCKOUT_4' && selectedTeamIds.length !== 4) {
-        alert("Para el formato 'Eliminatoria (4 Equipos)', debes seleccionar exactamente 4 equipos.");
-        return;
-    }
-    
-    if (!newTourneyData.name.trim()) { alert("Ingresa un nombre para el torneo"); return; }
-
-    setLoading(true);
-    let fixtureData: { groups: any, fixtures: any[] } = { groups: {}, fixtures: [] };
-    
-    // Filter teams
-    const tournamentTeams = registeredTeams.filter(t => selectedTeamIds.includes(t.id));
-
     try {
-        fixtureData = await generateSmartFixture(
-            tournamentTeams, 
-            newTourneyData.startDate, 
-            newTourneyData.endDate,
-            newTourneyData.matchDays,
-            { format: newTourneyData.format, knockout: newTourneyData.knockout }
-        );
+        if (!currentUser) return;
+        if (selectedTeamIds.length < 2) { alert("Debes seleccionar al menos 2 equipos para el torneo."); return; }
+        if (newTourneyData.format === 'KNOCKOUT_4' && selectedTeamIds.length !== 4) {
+            alert("Para el formato 'Eliminatoria (4 Equipos)', debes seleccionar exactamente 4 equipos.");
+            return;
+        }
+        
+        if (!newTourneyData.name.trim()) { alert("Ingresa un nombre para el torneo"); return; }
+
+        setLoading(true);
+        let fixtureData: { groups: any, fixtures: any[] } = { groups: {}, fixtures: [] };
+        
+        // Filter teams
+        const tournamentTeams = registeredTeams.filter(t => selectedTeamIds.includes(t.id));
+
+        try {
+            fixtureData = await generateSmartFixture(
+                tournamentTeams, 
+                newTourneyData.startDate, 
+                newTourneyData.endDate,
+                newTourneyData.matchDays,
+                { format: newTourneyData.format, knockout: newTourneyData.knockout }
+            );
+        } catch (e) {
+            console.error("Smart Fixture Generation Failed, forcing basic fallback", e);
+            fixtureData = generateBasicFixture(
+                tournamentTeams, 
+                newTourneyData.startDate, 
+                newTourneyData.endDate, 
+                newTourneyData.matchDays,
+                { format: newTourneyData.format, knockout: newTourneyData.knockout }
+            );
+            alert("Aviso: Se generó un fixture básico debido a un problema de conexión con la IA.");
+        } finally {
+            const { groups, fixtures } = fixtureData;
+            
+            const newTournament: Tournament = {
+              id: `tourney-${Date.now()}`,
+              ownerId: currentUser.id, 
+              name: newTourneyData.name,
+              logoUrl: newTourneyData.logoUrl,
+              startDate: newTourneyData.startDate,
+              endDate: newTourneyData.endDate,
+              teams: tournamentTeams,
+              groups,
+              fixtures: fixtures.map((f: any, i: number) => ({ ...f, id: `fix-${i}-${Date.now()}`, status: 'scheduled' }))
+            };
+            updateTournaments([...tournaments, newTournament]);
+            setActiveTournamentId(newTournament.id);
+            
+            setShowCreateTourneyModal(false);
+            setCurrentView('dashboard');
+            
+            setNewTourneyData({
+                name: '',
+                startDate: new Date().toISOString().split('T')[0],
+                endDate: new Date(Date.now() + 30*24*60*60*1000).toISOString().split('T')[0],
+                logoUrl: '',
+                matchDays: [],
+                format: 'LEAGUE',
+                knockout: 'SEMIS'
+            });
+            setSelectedTeamIds([]);
+            setLoading(false);
+        }       
     } catch (e) {
-        console.error("Smart Fixture Generation Failed, forcing basic fallback", e);
-        fixtureData = generateBasicFixture(
-            tournamentTeams, 
-            newTourneyData.startDate, 
-            newTourneyData.endDate, 
-            newTourneyData.matchDays,
-            { format: newTourneyData.format, knockout: newTourneyData.knockout }
-        );
-        alert("Aviso: Se generó un fixture básico debido a un problema de conexión con la IA.");
-    } finally {
-        const { groups, fixtures } = fixtureData;
-        
-        const newTournament: Tournament = {
-          id: `tourney-${Date.now()}`,
-          ownerId: currentUser.id, 
-          name: newTourneyData.name,
-          logoUrl: newTourneyData.logoUrl,
-          startDate: newTourneyData.startDate,
-          endDate: newTourneyData.endDate,
-          teams: tournamentTeams,
-          groups,
-          fixtures: fixtures.map((f: any, i: number) => ({ ...f, id: `fix-${i}-${Date.now()}`, status: 'scheduled' }))
-        };
-        updateTournaments([...tournaments, newTournament]);
-        setActiveTournamentId(newTournament.id);
-        
-        setShowCreateTourneyModal(false);
-        setCurrentView('dashboard');
-        
-        setNewTourneyData({
-            name: '',
-            startDate: new Date().toISOString().split('T')[0],
-            endDate: new Date(Date.now() + 30*24*60*60*1000).toISOString().split('T')[0],
-            logoUrl: '',
-            matchDays: [],
-            format: 'LEAGUE',
-            knockout: 'SEMIS'
-        });
-        setSelectedTeamIds([]);
         setLoading(false);
+        console.error("Fatal error creating tournament:", e);
+        alert("Ocurrió un error fatal al crear el torneo. Revisa la consola.");
     }
   };
 

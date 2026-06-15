@@ -81,7 +81,7 @@ export const generateSmartFixture = async (
     while (retries > 0) {
         try {
             const response = await ai.models.generateContent({
-              model: 'gemini-3-flash-preview',
+              model: 'gemini-2.5-flash',
               contents: prompt,
               config: {
                 responseMimeType: "application/json",
@@ -174,7 +174,7 @@ export const analyzeMatchStats = async (matchStats: any) => {
 
     try {
         const response = await ai.models.generateContent({
-            model: "gemini-3-flash-preview",
+            model: "gemini-2.5-flash",
             contents: `Analyze these volleyball match statistics and provide a brief, professional commentary in Spanish highlighting the MVP and key moments: ${JSON.stringify(matchStats)}`
         });
         return response.text;

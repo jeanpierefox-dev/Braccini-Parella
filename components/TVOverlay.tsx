@@ -75,7 +75,7 @@ const TVOverlay: React.FC<TVOverlayProps> = ({
   const [selectedDeviceId, setSelectedDeviceId] = useState<string>('');
   const [showSettings, setShowSettings] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
-  const [chromaMode, setChromaMode] = useState<'none' | 'green' | 'magenta' | 'blue'>('none');
+  const [chromaMode, setChromaMode] = useState<'none' | 'green' | 'magenta' | 'blue'>('green');
   const [showTikTokHelp, setShowTikTokHelp] = useState(false);
   const [showMobileHelp, setShowMobileHelp] = useState(false);
   const [showOBSHelp, setShowOBSHelp] = useState(false);
@@ -160,6 +160,9 @@ const TVOverlay: React.FC<TVOverlayProps> = ({
     let timers: NodeJS.Timeout[] = [];
     // Scoreboard Toggle Transition
     if (showScoreboard !== visibleScoreboard) {
+        // Sync visible state instantly so the UI updates without delay
+        setVisibleScoreboard(showScoreboard);
+
         if (showScoreboard) {
             // Turn ON: Logo In -> Logo Out -> Scoreboard In
             setStingerAnim('in');
@@ -172,7 +175,6 @@ const TVOverlay: React.FC<TVOverlayProps> = ({
                     timers.push(setTimeout(() => setBoardAnim('idle'), 800));
                 }, 800));
             }, 800));
-            setVisibleScoreboard(true);
         } else {
             // Turn OFF: Scoreboard Out -> Logo In -> Logo Out
             setBoardAnim('out');
@@ -185,10 +187,13 @@ const TVOverlay: React.FC<TVOverlayProps> = ({
                     timers.push(setTimeout(() => setStingerAnim('idle'), 800));
                 }, 800));
             }, 800));
-            setVisibleScoreboard(false);
         }
     }
-    return () => timers.forEach(clearTimeout);
+    return () => {
+        timers.forEach(clearTimeout);
+        setStingerAnim('idle');
+        setBoardAnim('idle');
+    };
   }, [showScoreboard]); 
   
   useEffect(() => {
@@ -210,7 +215,13 @@ const TVOverlay: React.FC<TVOverlayProps> = ({
                 setIsConstructing(false);
             }, 1700);
             
-            return () => { clearTimeout(hideLogoTimer); clearTimeout(showStatsTimer); clearTimeout(endConstructionTimer); };
+            return () => { 
+                clearTimeout(hideLogoTimer); 
+                clearTimeout(showStatsTimer); 
+                clearTimeout(endConstructionTimer); 
+                setStingerAnim('idle');
+                setIsConstructing(false);
+            };
         } else {
             // Turn OFF
             setVisibleStats(false);
@@ -218,7 +229,10 @@ const TVOverlay: React.FC<TVOverlayProps> = ({
             const resetAnimTimer = setTimeout(() => {
                 setStingerAnim('idle');
             }, 700);
-            return () => clearTimeout(resetAnimTimer);
+            return () => {
+                clearTimeout(resetAnimTimer);
+                setStingerAnim('idle');
+            };
         }
     }
   }, [showStatsOverlay]);
@@ -462,10 +476,12 @@ const TVOverlay: React.FC<TVOverlayProps> = ({
 
   // Function to toggle scoreboard safely
   const toggleScoreboard = () => {
-      const newState = !visibleScoreboard;
-      setVisibleScoreboard(newState);
+      const newState = !showScoreboard;
       if (onUpdateMatch) {
           onUpdateMatch({ showScoreboard: newState });
+      } else {
+          // Fallback local update if disconnected or standalone
+          setVisibleScoreboard(newState);
       }
   };
 
@@ -1077,7 +1093,7 @@ const TVOverlay: React.FC<TVOverlayProps> = ({
             <div className={`relative z-10 transition-all duration-300
                 ${isVertical 
                     ? 'absolute top-0 left-0 h-full w-32 md:w-40 flex items-center justify-center pointer-events-none' 
-                    : 'absolute bottom-4 md:bottom-10 left-1/2 -translate-x-1/2 w-[98%] md:w-full max-w-5xl pointer-events-none'
+                    : 'absolute bottom-4 md:bottom-12 left-1/2 -translate-x-1/2 w-[98%] md:w-full max-w-5xl pointer-events-none'
                 }
             `}
             style={(boardAnim === 'in' || boardAnim === 'out') ? {
@@ -1086,103 +1102,85 @@ const TVOverlay: React.FC<TVOverlayProps> = ({
                     : 'drawBoardOut 0.8s cubic-bezier(0.8, 0, 0.2, 1) forwards'
             } : {}}
             >
-                <div className={`bg-white border-4 border-[#facc15] rounded-xl md:rounded-2xl overflow-hidden shadow-[0_0_30px_rgba(250,204,21,0.3)] flex items-stretch pointer-events-auto shrink-0 relative
+                
+                <div className={`bg-transparent rounded-none overflow-visible flex flex-col items-center pointer-events-auto shrink-0 relative
                     ${isVertical 
-                        ? 'rotate-90 origin-center w-[50vh] max-w-none h-12 md:h-16' 
-                        : 'w-full flex-row h-14 md:h-24'
+                        ? 'rotate-90 origin-center w-[60vh] max-w-none h-14 md:h-20' 
+                        : 'w-full h-14 md:h-20'
                     }
                 `}>
-                    {/* Tech Overlay Lines */}
-                    <div className="absolute inset-0 pointer-events-none z-20">
-                        <div className="absolute top-0 left-0 w-full h-[1px] bg-yellow-400/50"></div>
-                        <div className="absolute bottom-0 left-0 w-full h-[1px] bg-yellow-400/50"></div>
-                        <div className="absolute top-0 left-0 w-3 h-3 border-t-2 border-l-2 border-yellow-600"></div>
-                        <div className="absolute top-0 right-0 w-3 h-3 border-t-2 border-r-2 border-yellow-600"></div>
-                        <div className="absolute bottom-0 left-0 w-3 h-3 border-b-2 border-l-2 border-yellow-600"></div>
-                        <div className="absolute bottom-0 right-0 w-3 h-3 border-b-2 border-r-2 border-yellow-600"></div>
+                    {/* Top Tab for Tournament Name */}
+                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 bg-[#0f172a] rounded-t-xl px-4 md:px-8 py-1 md:py-2 flex items-center gap-2 text-white font-black text-[10px] md:text-sm tracking-[0.2em] shadow-lg">
+                       <div className="w-1.5 h-1.5 md:w-2 md:h-2 bg-red-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.8)]"></div>
+                       {tournament?.name || "LIGA EXCLUSIVA"}
                     </div>
-                    
-                    {/* Tournament Logo (Vertical Only - Start) - REMOVED */}
 
-
-                    {/* Team A Section */}
-                    <div className="flex-1 flex items-center relative h-full px-2 md:px-4 bg-[#0000FF]">
-                        {/* Logo */}
-                        <div className="bg-white/20 rounded-lg border border-white/20 shadow-lg relative flex-shrink-0 flex items-center justify-center w-8 h-8 md:w-16 md:h-16 p-0.5 md:p-2 mr-1 md:mr-4">
-                            {teamA.logoUrl ? <img src={teamA.logoUrl} className="w-full h-full object-contain" /> : <div className="text-blue-400 font-bold text-xs md:text-lg">{teamA.name[0]}</div>}
-                            {match.servingTeamId === teamA.id && <div className="absolute -top-1 -left-1 text-[8px] md:text-sm bg-white rounded-full leading-none shadow-sm border border-slate-200">🏐</div>}
-                        </div>
+                    <div className="w-full h-full flex rounded shadow-2xl overflow-hidden font-sans">
                         
-                        {/* Name */}
-                        <div className="flex-1 min-w-0 flex flex-col justify-center mr-1 md:mr-4">
-                            <h2 className={`text-white font-black uppercase italic tracking-tighter leading-none truncate ${isVertical ? 'text-[8px] md:text-xl' : 'text-[10px] md:text-2xl'}`}>{teamA.name}</h2>
-                            <div className="flex gap-0.5 md:gap-1 mt-0.5 md:mt-1">
-                                {sets.filter(s => s.scoreA > s.scoreB && Math.max(s.scoreA, s.scoreB) >= (match.currentSet === match.config.maxSets ? match.config.tieBreakPoints : match.config.pointsPerSet)).map((_,i) => (
-                                    <div key={i} className="w-1.5 h-1.5 md:w-3 md:h-3 bg-[#facc15] rounded-full border border-yellow-600 shadow-[0_0_5px_rgba(250,204,21,0.6)]"></div>
-                                ))}
+                        {/* Team A Section */}
+                        <div className="flex-1 flex items-center justify-between pl-2 md:pl-4 pr-0 bg-[#252a3b] border-l-4 border-[#827DFF]">
+                            <div className="flex flex-row items-center flex-1">
+                                {/* Logo */}
+                                <div className="bg-transparent rounded relative flex-shrink-0 flex items-center justify-center w-8 h-8 md:w-12 md:h-12 mr-2">
+                                    {teamA.logoUrl ? <img src={teamA.logoUrl} className="w-full h-full object-contain" /> : <div className="w-8 h-8 md:w-10 md:h-10 bg-black/40 rounded flex items-center justify-center text-slate-400 font-bold text-xs">{teamA.name[0]}</div>}
+                                    {match.servingTeamId === teamA.id && <div className="absolute -top-1 -right-1 text-[8px] md:text-sm bg-white rounded-full leading-none shadow-sm border border-slate-200">🏐</div>}
+                                </div>
+                                {/* Name */}
+                                <div className="flex-1 min-w-0 pr-4">
+                                    <h2 className={`text-white font-black uppercase tracking-widest truncate ${isVertical ? 'text-[9px] md:text-xl' : 'text-xs md:text-2xl'}`}>{teamA.name}</h2>
+                                    <div className="flex gap-1 mt-1">
+                                        {Array.from({length: requiredWins}).map((_, i) => (
+                                            <div key={i} className={`w-1.5 h-1.5 md:w-2 md:h-2 rounded-full ${i < winsA ? 'bg-white shadow-[0_0_5px_rgba(255,255,255,0.8)]' : 'bg-white/10'}`}></div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                            {/* Score */}
+                            <div className="bg-[#181d2e] h-full flex items-center justify-center px-4 md:px-8 border-l border-white/5 border-r border-[#0f172a]">
+                                <span className={`font-black text-[#827DFF] tabular-nums tracking-tighter leading-none ${isVertical ? 'text-2xl md:text-5xl' : 'text-3xl md:text-[3.5rem]'}`}>
+                                    {match.scoreA}
+                                </span>
                             </div>
                         </div>
 
-                        {/* Score */}
-                        <div className="flex items-center justify-center bg-white rounded md:rounded-xl border-2 border-[#0000FF] shadow-lg w-10 md:w-28 h-8 md:h-16">
-                            <span className={`font-black text-[#0000FF] tabular-nums tracking-tighter leading-none ${isVertical ? 'text-lg md:text-4xl' : 'text-xl md:text-6xl'}`}>
-                                {match.scoreA}
-                            </span>
-                        </div>
-                    </div>
-
-                    {/* Center Info */}
-                    <div className="flex flex-col items-center justify-center border-x-2 border-[#facc15] z-10 relative flex-shrink-0 bg-[#facc15] w-14 md:w-40 h-full px-1">
-                        {tournament?.logoUrl && (
-                            <img src={tournament.logoUrl} className="h-4 md:h-10 object-contain mb-0.5 drop-shadow-sm" />
-                        )}
-                        <div className="flex items-center gap-1">
-                            <div className="text-[6px] md:text-[10px] text-[#dc2626] font-bold uppercase tracking-widest">Set {match.currentSet}</div>
-                            {!tournament?.logoUrl && (
-                                <div className={`text-[6px] md:text-xs font-bold px-1 md:px-1.5 py-0.5 rounded ${isSetFinished ? 'bg-white text-[#dc2626]' : 'bg-white text-[#dc2626] animate-pulse'}`}>
-                                    {isSetFinished ? 'FIN' : 'LIVE'}
+                        {/* Center Info - Tournament Logo */}
+                        <div className="flex flex-col items-center justify-center z-10 relative flex-shrink-0 bg-[#0f172a] w-16 md:w-36 h-full p-2 border-x border-black/50">
+                            {tournament?.logoUrl ? (
+                                <img src={tournament.logoUrl} className="h-full w-full object-contain drop-shadow-[0_0_15px_rgba(255,255,255,0.2)]" />
+                            ) : (
+                                <div className="text-[10px] md:text-xs text-white/50 font-bold uppercase tracking-widest text-center leading-tight">
+                                    VS
                                 </div>
                             )}
                         </div>
-                        <div className="flex gap-0.5 md:gap-1 mt-0.5">
-                            {sets.map((s, i) => (
-                                (s.scoreA > 0 || s.scoreB > 0) && i < match.currentSet - 1 && (
-                                    <div key={i} className="text-[6px] md:text-[9px] text-[#dc2626] font-mono font-bold">
-                                        {s.scoreA}-{s.scoreB}
-                                    </div>
-                                )
-                            ))}
-                        </div>
-                    </div>
 
-                    {/* Team B Section */}
-                    <div className="flex-1 flex items-center relative h-full px-2 md:px-4 flex-row-reverse bg-[#dc2626]">
-                         {/* Logo */}
-                        <div className="bg-white/20 rounded-lg border border-white/20 shadow-lg relative flex-shrink-0 flex items-center justify-center w-8 h-8 md:w-16 md:h-16 p-0.5 md:p-2 ml-1 md:ml-4">
-                            {teamB.logoUrl ? <img src={teamB.logoUrl} className="w-full h-full object-contain" /> : <div className="text-red-400 font-bold text-xs md:text-lg">{teamB.name[0]}</div>}
-                            {match.servingTeamId === teamB.id && <div className="absolute -top-1 -right-1 text-[8px] md:text-sm bg-white rounded-full leading-none shadow-sm border border-slate-200">🏐</div>}
-                        </div>
-                        
-                        {/* Name */}
-                        <div className="flex-1 min-w-0 flex flex-col justify-center ml-1 md:ml-4 items-end text-right">
-                            <h2 className={`text-white font-black uppercase italic tracking-tighter leading-none truncate ${isVertical ? 'text-[8px] md:text-xl' : 'text-[10px] md:text-2xl'}`}>{teamB.name}</h2>
-                            <div className="flex gap-0.5 md:gap-1 mt-0.5 md:mt-1 justify-end">
-                                {sets.filter(s => s.scoreB > s.scoreA && Math.max(s.scoreA, s.scoreB) >= (match.currentSet === match.config.maxSets ? match.config.tieBreakPoints : match.config.pointsPerSet)).map((_,i) => (
-                                    <div key={i} className="w-1.5 h-1.5 md:w-3 md:h-3 bg-[#facc15] rounded-full border border-yellow-600 shadow-[0_0_5px_rgba(250,204,21,0.6)]"></div>
-                                ))}
+                        {/* Team B Section */}
+                        <div className="flex-1 flex items-center justify-between pr-2 md:pr-4 pl-0 bg-[#2b2a3b] border-r-4 border-[#4C8BFF] flex-row-reverse">
+                            <div className="flex flex-row-reverse items-center flex-1">
+                                {/* Logo */}
+                                <div className="bg-transparent rounded relative flex-shrink-0 flex items-center justify-center w-8 h-8 md:w-12 md:h-12 ml-2">
+                                    {teamB.logoUrl ? <img src={teamB.logoUrl} className="w-full h-full object-contain" /> : <div className="w-8 h-8 md:w-10 md:h-10 bg-black/40 rounded flex items-center justify-center text-slate-400 font-bold text-xs">{teamB.name[0]}</div>}
+                                    {match.servingTeamId === teamB.id && <div className="absolute -top-1 -left-1 text-[8px] md:text-sm bg-white rounded-full leading-none shadow-sm border border-slate-200">🏐</div>}
+                                </div>
+                                {/* Name */}
+                                <div className="flex-1 min-w-0 pl-4 flex flex-col items-end">
+                                    <h2 className={`text-white font-black uppercase tracking-widest truncate ${isVertical ? 'text-[9px] md:text-xl' : 'text-xs md:text-2xl'}`}>{teamB.name}</h2>
+                                    <div className="flex gap-1 mt-1 justify-end">
+                                        {Array.from({length: requiredWins}).map((_, i) => (
+                                            <div key={i} className={`w-1.5 h-1.5 md:w-2 md:h-2 rounded-full ${i < winsB ? 'bg-white shadow-[0_0_5px_rgba(255,255,255,0.8)]' : 'bg-white/10'}`}></div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                            {/* Score */}
+                            <div className="bg-[#181d2e] h-full flex items-center justify-center px-4 md:px-8 border-r border-white/5 border-l border-[#0f172a]">
+                                <span className={`font-black text-[#4C8BFF] tabular-nums tracking-tighter leading-none ${isVertical ? 'text-2xl md:text-5xl' : 'text-3xl md:text-[3.5rem]'}`}>
+                                    {match.scoreB}
+                                </span>
                             </div>
                         </div>
 
-                        {/* Score */}
-                        <div className="flex items-center justify-center bg-white rounded md:rounded-xl border-2 border-[#dc2626] shadow-lg w-10 md:w-28 h-8 md:h-16">
-                            <span className={`font-black text-[#dc2626] tabular-nums tracking-tighter leading-none ${isVertical ? 'text-lg md:text-4xl' : 'text-xl md:text-6xl'}`}>
-                                {match.scoreB}
-                            </span>
-                        </div>
                     </div>
-
-                    {/* Tournament Logo (Horizontal Only - End) - REMOVED */}
-
                 </div>
             </div>
           )
